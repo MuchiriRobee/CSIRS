@@ -1,0 +1,22 @@
+import { z } from "zod";
+import { IncidentCategory, IncidentStatus } from "../types";
+
+export const reportIncidentSchema = z.object({
+  category: z.nativeEnum(IncidentCategory),
+  location: z.string().min(3, "Location must be at least 3 characters"),
+  description: z.string().min(10, "Description must be at least 10 characters"),
+});
+
+export const updateIncidentSchema = z.object({
+  status: z.nativeEnum(IncidentStatus).optional(),
+  adminNotes: z.string().optional(),
+  assignedToId: z.string().uuid().optional(),
+});
+
+export const incidentQuerySchema = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().positive().default(10),
+  status: z.nativeEnum(IncidentStatus).optional(),
+  category: z.nativeEnum(IncidentCategory).optional(),
+  location: z.string().optional(),
+});
