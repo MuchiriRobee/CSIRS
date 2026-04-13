@@ -1,0 +1,135 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  REPORTER
+  ADMIN
+}
+
+enum IncidentStatus {
+  PENDING
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum IncidentCategory {
+  THEFT
+  PHYSICAL_ASSAULT
+  SEXUAL_HARASSMENT
+  FIRE_OUTBREAK
+  MEDICAL_EMERGENCY
+  PROPERTY_DAMAGE
+  CYBER_BULLYING
+  INFRASTRUCTURE_ISSUE
+  OTHER
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      Role     @default(REPORTER)
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
+
+  incidents         Incident[]
+  attachments       IncidentAttachment[]
+  auditLogs         AuditLog[]           @relation("PerformedBy")
+  assignedIncidents Incident[]           @relation("AssignedTo")
+  incidentComments  IncidentComment[]    @relation("CommentAuthor") // ← FIXED: missing back-relation
+
+  @@map("users")
+}
+
+model Incident {
+  id          String           @id @default(uuid())
+  category    IncidentCategory
+  location    String
+  description String
+  status      IncidentStatus   @default(PENDING)
+  adminNotes  String?
+  createdAt   DateTime         @default(now()) @db.Timestamptz
+  updatedAt   DateTime         @updatedAt @db.Timestamptz
+  resolvedAt  DateTime?        @db.Timestamptz
+
+  reporterId String?
+  reporter   User?   @relation(fields: [reporterId], references: [id], onDelete: SetNull)
+
+  attachments IncidentAttachment[]
+  auditLogs   AuditLog[]           @relation("IncidentAudit")
+  comments    IncidentComment[]
+
+  // For admin assignment (future enhancement)
+  assignedToId String?
+  assignedTo   User?   @relation("AssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([category])
+  @@index([location])
+  @@index([createdAt])
+  @@index([reporterId])
+  @@index([status, category]) // Common dashboard filter
+  @@map("incidents")
+}
+
+model IncidentAttachment {
+  id         String   @id @default(uuid())
+  fileName   String
+  filePath   String // relative path or URL (local for MVP, Cloudinary later)
+  mimeType   String
+  size       Int?
+  uploadedAt DateTime @default(now()) @db.Timestamptz
+
+  incidentId String
+  incident   Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+
+  uploadedById String?
+  uploadedBy   User?   @relation(fields: [uploadedById], references: [id])
+
+  @@map("incident_attachments")
+}
+
+model IncidentComment {
+  id        String   @id @default(uuid())
+  content   String
+  createdAt DateTime @default(now()) @db.Timestamptz
+
+  incidentId String
+  incident   Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+
+  authorId String
+  author   User   @relation("CommentAuthor", fields: [authorId], references: [id])
+
+  @@map("incident_comments")
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  action      String // e.g. "CREATE_INCIDENT", "UPDATE_STATUS", "ADD_COMMENT"
+  entity      String // "INCIDENT"
+  entityId    String
+  details     Json?
+  performedAt DateTime @default(now()) @db.Timestamptz
+
+  performedById String
+  performedBy   User   @relation("PerformedBy", fields: [performedById], references: [id])
+
+  incidentId String?
+  incident   Incident? @relation("IncidentAudit", fields: [incidentId], references: [id], onDelete: SetNull)
+
+  @@index([entity, entityId])
+  @@index([performedAt])
+  @@map("audit_logs")
+}
+
+// Prisma Seed Configuration (official best practice)
+generator seed {
+  provider = "prisma-client-js"
+}
