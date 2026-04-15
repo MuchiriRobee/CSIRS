@@ -1,0 +1,99 @@
+import { incidentRepository } from '../repositories/incident.repository.js';
+import { auditLogRepository } from '../repositories/audit-log.repository.js';
+import { NotificationService } from './notification.service.js';
+import { reportIncidentSchema, updateIncidentSchema, incidentQuerySchema } from '@csirs/shared/schemas';
+//import { IncidentCategory, IncidentStatus } from '@csirs/shared/types';
+
+export class IncidentService {
+  /**
+   * Create new incident (anonymous or logged-in)
+   * Supports optional file attachments
+   */
+  static async createIncident(
+    body: any,
+    reporterId?: string,
+    attachments: Array<{
+      fileName: string;
+      filePath: string;
+      mimeType: string;
+      size?: number;
+    }> = []
+  ) {
+    const validated = reportIncidentSchema.parse(body);
+
+    const incident = await incidentRepository.createIncident({
+      ...validated,
+      reporterId,
+      attachments,
+    });
+
+    // Send notification to admins
+    await NotificationService.sendNewIncidentNotification(incident);
+
+    return incident;
+  }
+
+  /**
+   * Get all incidents (for admin dashboard)
+   */
+  static async getAllIncidents(query: any) {
+    const validated = incidentQuerySchema.parse(query);
+    return incidentRepository.findWithFilters(validated);
+  }
+
+  /**
+   * Get only the reporter's own incidents (My Reports)
+   */
+  static async getMyReports(reporterId: string, query: any) {
+    const validated = incidentQuerySchema.parse(query);
+    const filters = {
+      ...validated,
+      reporterId, // filter by logged-in user
+    };
+    return incidentRepository.findWithFilters(filters);
+  }
+
+  /**
+   * Update incident status / notes (admin only)
+   */
+  static async updateIncident(
+    id: string,
+    data: any,
+    performedById: string
+  ) {
+    const validated = updateIncidentSchema.parse(data);
+
+    const incident = await incidentRepository.updateStatus(
+      id,
+      validated.status || 'PENDING',
+      performedById,
+      validated.adminNotes,
+      validated.assignedToId      
+    );
+
+    // Trigger status update notification to reporter (if logged-in)
+    if (validated.status) {
+      await NotificationService.sendStatusUpdateNotification(incident, validated.status);
+    }
+
+    return incident;
+  }
+
+  /**
+   * Add comment to incident (admin or reporter)
+   */
+  static async addComment(incidentId: string, authorId: string, content: string) {
+    const comment = await incidentRepository.addComment(incidentId, authorId, content);
+
+    // Audit log the comment
+    await auditLogRepository.logAction(
+      'ADD_COMMENT',
+      'INCIDENT',
+      incidentId,
+      authorId,
+      { content: content.substring(0, 100) }
+    );
+
+    return comment;
+  }
+}

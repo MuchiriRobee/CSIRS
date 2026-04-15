@@ -47,3 +47,17 @@ export interface PaginationMeta {
   total: number;
   totalPages: number;
 }
+
+// =============================================
+// JWT Payload (used in auth middleware)
+// =============================================
+export interface JwtPayload {
+  userId: string;
+  email: string;
+  role: UserRole;
+  iat?: number;
+  exp?: number;
+}
+
+// Re-export input types from schemas for clean imports
+export type { RegisterInput, LoginInput } from '../schemas/user.schema';

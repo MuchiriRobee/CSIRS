@@ -1,14 +1,16 @@
-import { z } from "zod";
-import { IncidentCategory, IncidentStatus } from "../types";
+import { z } from 'zod';
+import { IncidentCategory, IncidentStatus } from '../types';
 
 export const reportIncidentSchema = z.object({
   category: z.nativeEnum(IncidentCategory),
-  location: z.string().min(3, "Location must be at least 3 characters"),
-  description: z.string().min(10, "Description must be at least 10 characters"),
+  location: z.string().min(3, 'Location must be at least 3 characters'),
+  description: z.string().min(10, 'Description must be at least 10 characters'),
+  // attachments are handled via multer (optional)
 });
 
+// New schema for admin updates (status + notes)
 export const updateIncidentSchema = z.object({
-  status: z.nativeEnum(IncidentStatus).optional(),
+  status: z.nativeEnum(IncidentStatus),           // ← Now required for updates
   adminNotes: z.string().optional(),
   assignedToId: z.string().uuid().optional(),
 });
