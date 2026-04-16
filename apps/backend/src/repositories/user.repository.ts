@@ -49,6 +49,13 @@ class UserRepository extends BaseRepository<any> {
       data: { password: hashedPassword },
     });
   }
+
+       async findAllAdmins() {
+       return this.model.findMany({
+         where: { role: 'ADMIN' },
+         select: { id: true, email: true, name: true },
+       });
+     }
 }
 
 export const userRepository = new UserRepository();

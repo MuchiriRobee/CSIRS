@@ -8,49 +8,51 @@ class IncidentRepository extends BaseRepository<any> {
     super(prisma.incident);
   }
 
-  async createIncident(data: {
-    category: IncidentCategory;
-    location: string;
-    description: string;
-    reporterId?: string;
-    attachments?: Array<{ fileName: string; filePath: string; mimeType: string; size?: number }>;
-  }) {
-    const incident = await this.model.create({
-      data: {
-        category: data.category,
-        location: data.location,
-        description: data.description,
-        reporterId: data.reporterId || null,
-        status: 'PENDING',
-      },
-      include: { attachments: true },
-    });
+     async createIncident(data: {
+       category: IncidentCategory;
+       location: string;
+       description: string;
+       reporterId?: string;
+       attachments?: Array<{ fileName: string; filePath: string; mimeType: string; size?: number }>;
+     }) {
+       const incident = await this.model.create({
+         data: {
+           category: data.category,
+           location: data.location,
+           description: data.description,
+           reporterId: data.reporterId || null,
+           status: 'PENDING',
+         },
+         include: { attachments: true },
+       });
 
-    // Save attachments if provided
-    if (data.attachments && data.attachments.length > 0) {
-      await prisma.incidentAttachment.createMany({
-        data: data.attachments.map((att) => ({
-          incidentId: incident.id,
-          fileName: att.fileName,
-          filePath: att.filePath,
-          mimeType: att.mimeType,
-          size: att.size,
-          uploadedById: data.reporterId || null,
-        })),
-      });
-    }
+       // Save attachments if provided
+       if (data.attachments && data.attachments.length > 0) {
+         await prisma.incidentAttachment.createMany({
+           data: data.attachments.map((att) => ({
+             incidentId: incident.id,
+             fileName: att.fileName,
+             filePath: att.filePath,
+             mimeType: att.mimeType,
+             size: att.size,
+             uploadedById: data.reporterId || null,
+           })),
+         });
+       }
 
-    // Log creation
-    await auditLogRepository.logAction(
-      'CREATE_INCIDENT',
-      'INCIDENT',
-      incident.id,
-      data.reporterId || 'anonymous',
-      { category: data.category, location: data.location }
-    );
+       // === FIXED: Only log if there is a real user (skip for anonymous) ===
+       if (data.reporterId) {
+         await auditLogRepository.logAction(
+           'CREATE_INCIDENT',
+           'INCIDENT',
+           incident.id,
+           data.reporterId,
+           { category: data.category, location: data.location }
+         );
+       }
 
-    return incident;
-  }
+       return incident;
+     }
 
   // Existing methods remain unchanged
   async findWithFilters(query: any) {
@@ -96,6 +98,9 @@ class IncidentRepository extends BaseRepository<any> {
         assignedToId: assignedToId ?? undefined,
         resolvedAt: (status === 'RESOLVED' || status === 'CLOSED') ? new Date() : null,
       },
+      include: {
+           reporter: true,           // ← This was missing
+         },
     });
 
     // Audit log

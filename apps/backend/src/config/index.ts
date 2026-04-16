@@ -12,8 +12,8 @@ const envSchema = z.object({
   JWT_SECRET: z
     .string()
     .min(32, "JWT_SECRET must be at least 32 characters (add in Phase 3)"),
-  MAILERSEND_API_KEY: z.string().optional(), // for Phase 4 notifications
-  MAILERSEND_FROM_EMAIL: z.string().email().default('noreply@tvetsafety.ac.ke'),
+  MAILERSEND_API_KEY: z.string().min(1, 'MAILERSEND_API_KEY is required for notifications'),
+  MAILERSEND_FROM_EMAIL: z.string().email('MAILERSEND_FROM_EMAIL must be a valid email'),
   MAILERSEND_FROM_NAME: z.string().default('CSIRS Campus Safety'),
   FRONTEND_URL: z.string().url().default('http://localhost:5173'),
 });

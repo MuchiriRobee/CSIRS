@@ -1,7 +1,7 @@
 import { incidentRepository } from '../repositories/incident.repository.js';
-import { auditLogRepository } from '../repositories/audit-log.repository.js';
 import { NotificationService } from './notification.service.js';
 import { reportIncidentSchema, updateIncidentSchema, incidentQuerySchema } from '@csirs/shared/schemas';
+import { AuditLogService } from './audit-log.service.js';
 //import { IncidentCategory, IncidentStatus } from '@csirs/shared/types';
 
 export class IncidentService {
@@ -72,9 +72,9 @@ export class IncidentService {
     );
 
     // Trigger status update notification to reporter (if logged-in)
-    if (validated.status) {
-      await NotificationService.sendStatusUpdateNotification(incident, validated.status);
-    }
+       if (validated.status && incident.reporterId) {
+         await NotificationService.sendStatusUpdateNotification(incident, validated.status);
+       }
 
     return incident;
   }
@@ -85,8 +85,8 @@ export class IncidentService {
   static async addComment(incidentId: string, authorId: string, content: string) {
     const comment = await incidentRepository.addComment(incidentId, authorId, content);
 
-    // Audit log the comment
-    await auditLogRepository.logAction(
+    // Audit log via dedicated service
+    await AuditLogService.log(
       'ADD_COMMENT',
       'INCIDENT',
       incidentId,

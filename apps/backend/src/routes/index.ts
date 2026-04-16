@@ -7,24 +7,32 @@ import { authenticateJWT, requireAdmin, requireReporterOrAdmin, reportRateLimite
 const router = Router();
 
 // ======================
-// PUBLIC ROUTES (no auth required)
+// PUBLIC ROUTES (no authentication required)
 // ======================
 router.get('/health', HealthController.getHealth);
 
-// Anonymous + logged-in reporting (core proposal feature)
+// Anonymous + optional logged-in reporting (with optional file attachments)
 router.post('/incidents', reportRateLimiter, IncidentController.create);
 
-// Auth (public)
+// Auth routes
 router.post('/auth/register', AuthController.register);
 router.post('/auth/login', AuthController.login);
 router.post('/auth/refresh', AuthController.refresh);
 
 // ======================
-// PROTECTED ROUTES (require JWT + role)
+// PROTECTED ROUTES (require JWT)
 // ======================
+
+// Admin: View all incidents
 router.get('/incidents', authenticateJWT, requireAdmin, IncidentController.getAll);
 
-// Future: My Reports for logged-in reporters
+// Reporter (or Admin): View own reports
 router.get('/my-reports', authenticateJWT, requireReporterOrAdmin, IncidentController.getMyReports);
+
+// Admin: Update incident status / notes
+router.put('/incidents/:id', authenticateJWT, requireAdmin, IncidentController.update); // we'll add this method next if needed
+
+// Admin / Reporter: Add comment to incident
+router.post('/incidents/:id/comments', authenticateJWT, requireReporterOrAdmin, IncidentController.addComment);
 
 export default router;

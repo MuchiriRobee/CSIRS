@@ -1,6 +1,7 @@
 import { MailerSend, EmailParams, Sender, Recipient } from 'mailersend';
 import env, { MAILERSEND_FROM_EMAIL, MAILERSEND_FROM_NAME, FRONTEND_URL } from '../config/index.js';
 import { IncidentStatus } from '@csirs/shared/types';
+import { userRepository } from '../repositories/user.repository.js';
 
 const mailerSend = new MailerSend({
   apiKey: env.MAILERSEND_API_KEY || '',
@@ -13,15 +14,22 @@ export class NotificationService {
   /**
    * Notify admins when a new incident is reported
    */
-  static async sendNewIncidentNotification(incident: any) {
+static async sendNewIncidentNotification(incident: any) {
     if (!env.MAILERSEND_API_KEY) {
       console.warn('⚠️ MAILERSEND_API_KEY not set - skipping email notification');
       return;
     }
 
+    // Fetch all admin users dynamically
+    const admins = await userRepository.findAllAdmins();
+
+    if (admins.length === 0) {
+      console.warn('⚠️ No admin users found in database - skipping notification');
+      return;
+    }
+
     const emailParams = new EmailParams()
       .setFrom(fromEmail)
-      .setTo([new Recipient('admin@tvetsafety.ac.ke', 'Campus Admin')]) // You can make this array configurable later
       .setSubject(`New Incident Reported - ${incident.category}`)
       .setHtml(`
         <h2>New Safety Incident Reported</h2>
@@ -38,11 +46,15 @@ export class NotificationService {
         Reported by: ${incident.reporterId ? 'Logged-in user' : 'Anonymous'}
       `);
 
-    try {
-      await mailerSend.email.send(emailParams);
-      console.log(`📧 New incident notification sent for ID: ${incident.id}`);
-    } catch (error) {
-      console.error('Failed to send new incident email:', error);
+    // Send to every admin
+    for (const admin of admins) {
+      try {
+        emailParams.setTo([new Recipient(admin.email, admin.name)]);
+        await mailerSend.email.send(emailParams);
+        console.log(`📧 New incident notification sent to ${admin.email} for ID: ${incident.id}`);
+      } catch (error) {
+        console.error(`Failed to send email to ${admin.email}:`, error);
+      }
     }
   }
 

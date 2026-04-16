@@ -1,0 +1,179 @@
+{
+  "info": {
+    "_postman_id": "csirs-phase4-complete",
+    "name": "CSIRS Backend – Phase 4 Complete",
+    "description": "Full CSIRS system up to Phase 4 (Auth + Incident Management)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Health Check",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/health"
+      }
+    },
+    {
+      "name": "2. Register (Reporter)",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/auth/register",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Test Reporter\",\n  \"email\": \"reporter@example.com\",\n  \"password\": \"Test1234\"\n}"
+        }
+      }
+    },
+    {
+      "name": "3. Login",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 200) {",
+              "    const json = pm.response.json();",
+              "    pm.environment.set('accessToken', json.data.accessToken);",
+              "    console.log('✅ Access Token saved automatically');",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/auth/login",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"admin@tvetsafety.ac.ke\",\n  \"password\": \"yourpasswordhere\"\n}"
+        }
+      }
+    },
+    {
+      "name": "4. Refresh Token",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/auth/refresh"
+      }
+    },
+    {
+      "name": "5. Anonymous Report (No Token)",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/incidents",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"category\": \"THEFT\",\n  \"location\": \"Lab A\",\n  \"description\": \"Laptop stolen from desk\"\n}"
+        }
+      }
+    },
+    {
+      "name": "6. Logged-in Report with Attachment (Form-Data)",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/incidents",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            { "key": "category", "value": "FIRE_OUTBREAK", "type": "text" },
+            { "key": "location", "value": "Hostel Block B", "type": "text" },
+            { "key": "description", "value": "Small fire in kitchen", "type": "text" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "7. Get All Incidents (Admin Only)",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "const token = pm.environment.get('accessToken');",
+              "if (token) pm.request.headers.add({ key: 'Authorization', value: `Bearer ${token}` });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/incidents?page=1&limit=10"
+      }
+    },
+    {
+      "name": "8. My Reports (Logged-in User)",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "const token = pm.environment.get('accessToken');",
+              "if (token) pm.request.headers.add({ key: 'Authorization', value: `Bearer ${token}` });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/my-reports"
+      }
+    },
+    {
+      "name": "9. Update Incident Status (Admin)",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "const token = pm.environment.get('accessToken');",
+              "if (token) pm.request.headers.add({ key: 'Authorization', value: `Bearer ${token}` });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PUT",
+        "url": "{{baseUrl}}/api/incidents/{{incidentId}}",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"IN_PROGRESS\",\n  \"adminNotes\": \"Investigating now\"\n}"
+        }
+      }
+    },
+    {
+      "name": "10. Add Comment to Incident",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "const token = pm.environment.get('accessToken');",
+              "if (token) pm.request.headers.add({ key: 'Authorization', value: `Bearer ${token}` });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/incidents/{{incidentId}}/comments",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"content\": \"Please check CCTV footage from 2pm\"\n}"
+        }
+      }
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000" },
+    { "key": "accessToken", "value": "" },
+    { "key": "incidentId", "value": "" }
+  ]
+}
