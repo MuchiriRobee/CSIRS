@@ -6,14 +6,7 @@ import reactHooks from "eslint-plugin-react-hooks";
 import reactRefresh from "eslint-plugin-react-refresh";
 
 export default tseslint.config(
-  {
-    ignores: [
-      "**/.turbo/**",
-      "**/dist/**",
-      "**/node_modules/**",
-      "**/.next/**",
-    ],
-  },
+  { ignores: ["**/.turbo/**", "**/dist/**", "**/node_modules/**", "**/.next/**"] },
 
   js.configs.recommended,
   ...tseslint.configs.recommended,
@@ -36,12 +29,9 @@ export default tseslint.config(
     rules: {
       ...react.configs.recommended.rules,
       ...reactHooks.configs.recommended.rules,
-      "react/react-in-jsx-scope": "off", // ← FIXED: new JSX transform
-      "react-refresh/only-export-components": "warn",
-      "@typescript-eslint/no-unused-vars": [
-        "error",
-        { argsIgnorePattern: "^_" },
-      ],
+      "react-refresh/only-export-components": "off",           // ← FIXED: Allow shadcn/ui components
+      "react/react-in-jsx-scope": "off",
+      "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
       "@typescript-eslint/no-explicit-any": "warn",
     },
     settings: {
@@ -50,4 +40,13 @@ export default tseslint.config(
       },
     },
   },
+
+  // Optional: stricter rule only for non-UI files if you want
+  {
+    files: ["apps/frontend/src/**/*.{ts,tsx}"],
+    ignores: ["apps/frontend/src/components/ui/**/*"],
+    rules: {
+      "react-refresh/only-export-components": "warn",
+    },
+  }
 );
