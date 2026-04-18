@@ -60,4 +60,12 @@ export interface JwtPayload {
 }
 
 // Re-export input types from schemas for clean imports
-export type { RegisterInput, LoginInput } from '../schemas/user.schema';
+export type { RegisterInput, LoginInput } from "../schemas/user.schema";
+export type {
+  ReportIncidentInput,
+  UpdateIncidentInput,
+  IncidentQueryInput,
+} from "../schemas/incident.schema";
+
+// Add any other core types you have in ../types/
+export * from "./index"; // your existing types like UserRole, IncidentStatus, etc.
