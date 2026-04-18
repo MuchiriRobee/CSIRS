@@ -1,7 +1,7 @@
-import { BaseRepository } from './base.repository.js';
-import { UserRole } from '@csirs/shared/types';
-import bcrypt from 'bcryptjs';
-import prisma from '../config/prisma.js';
+import { BaseRepository } from "./base.repository.js";
+import { UserRole } from "@csirs/shared/types";
+import bcrypt from "bcryptjs";
+import prisma from "../config/prisma.js";
 
 class UserRepository extends BaseRepository<any> {
   constructor() {
@@ -16,7 +16,7 @@ class UserRepository extends BaseRepository<any> {
         email: true,
         name: true,
         role: true,
-        password: true,           // needed only for login verification
+        password: true, // needed only for login verification
         createdAt: true,
       },
     });
@@ -38,7 +38,10 @@ class UserRepository extends BaseRepository<any> {
     });
   }
 
-  async verifyPassword(userPassword: string, inputPassword: string): Promise<boolean> {
+  async verifyPassword(
+    userPassword: string,
+    inputPassword: string,
+  ): Promise<boolean> {
     return bcrypt.compare(inputPassword, userPassword);
   }
 
@@ -50,12 +53,47 @@ class UserRepository extends BaseRepository<any> {
     });
   }
 
-       async findAllAdmins() {
-       return this.model.findMany({
-         where: { role: 'ADMIN' },
-         select: { id: true, email: true, name: true },
-       });
-     }
+  // ==================== NEW METHODS FOR ADMIN USERS MANAGEMENT ====================
+
+  async findAllUsers() {
+    return this.model.findMany({
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+  }
+
+  async findById(id: string) {
+    return this.model.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        createdAt: true,
+      },
+    });
+  }
+
+  async updateRole(userId: string, newRole: UserRole) {
+    return this.model.update({
+      where: { id: userId },
+      data: { role: newRole },
+    });
+  }
+
+  async findAllAdmins() {
+    return this.model.findMany({
+      where: { role: "ADMIN" },
+      select: { id: true, email: true, name: true },
+    });
+  }
 }
 
 export const userRepository = new UserRepository();
