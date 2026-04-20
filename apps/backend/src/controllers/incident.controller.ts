@@ -1,3 +1,4 @@
+// src/controllers/incident.controller.ts
 import { Request, Response } from 'express';
 import { IncidentService } from '../services/incident.service.js'
 import { AuditLogService } from '../services/audit-log.service.js';
@@ -13,7 +14,7 @@ export class IncidentController {
       * Supports both cases on the same endpoint
       */
      static create = [
-       upload.array('attachments', 5),
+       upload.array('attachment', 5),
        async (req: Request, res: Response) => {
          try {
            let reporterId: string | undefined;
@@ -32,6 +33,7 @@ export class IncidentController {
            }
 
            const files = (req.files as Express.Multer.File[]) || [];
+           
 
            const attachments = files.map((file) => ({
              fileName: file.originalname,
@@ -40,9 +42,11 @@ export class IncidentController {
              size: file.size,
            }));
 
+           const isAnonymous = req.body.isAnonymous === 'true' || req.body.isAnonymous === true;
+
            const incident = await IncidentService.createIncident(
              req.body,
-             reporterId,
+             isAnonymous ? undefined : reporterId,   // ← Respect anonymous toggle
              attachments
            );
 

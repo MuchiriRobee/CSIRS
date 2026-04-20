@@ -70,9 +70,9 @@ static async sendNewIncidentNotification(incident: any) {
       .setSubject(`Your Report Status Updated - ${newStatus}`)
       .setHtml(`
         <h2>Your Safety Report has been Updated</h2>
-        <p><strong>Incident ID:</strong> ${incident.id}</p>
-        <p><strong>New Status:</strong> ${newStatus}</p>
-        ${incident.adminNotes ? `<p><strong>Admin Notes:</strong> ${incident.adminNotes}</p>` : ''}
+        <p>Hello, <strong>${incident.reporter.name} </strong> Your report has been updated to <strong>${newStatus} </strong></p>
+        <p>New Status: <strong>${newStatus}</strong></p>
+        ${incident.adminNotes ? `<p>Admin Notes:<strong>${incident.adminNotes}</strong> </p>` : ''}
         <p><a href="${FRONTEND_URL}/my-reports/${incident.id}">View Your Report</a></p>        
         <p>Thank you for helping keep our campus safe.</p>
       `)

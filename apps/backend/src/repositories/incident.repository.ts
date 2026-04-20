@@ -1,3 +1,4 @@
+// src/repositories/incident.repository.ts
 import { BaseRepository } from './base.repository.js';
 import { IncidentCategory, IncidentStatus } from '@csirs/shared/types';
 import prisma from '../config/prisma.js';
@@ -60,6 +61,7 @@ class IncidentRepository extends BaseRepository<any> {
     const skip = (page - 1) * limit;
 
     const where = {
+      ...(filters.reporterId && { reporterId: filters.reporterId }),   // ← Add this line
       ...(filters.status && { status: filters.status }),
       ...(filters.category && { category: filters.category }),
       ...(filters.location && { location: { contains: filters.location, mode: 'insensitive' } }),

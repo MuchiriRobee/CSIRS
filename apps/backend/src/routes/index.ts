@@ -18,7 +18,7 @@ const router = Router();
 router.get("/health", HealthController.getHealth);
 
 // Anonymous + optional logged-in reporting (with optional file attachments)
-router.post("/incidents", reportRateLimiter, IncidentController.create);
+router.post("/incidents", IncidentController.create); // add reportRateLimiter, later after testing
 
 // Auth routes
 router.post("/auth/register", AuthController.register);

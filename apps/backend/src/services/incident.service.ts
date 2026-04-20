@@ -1,3 +1,4 @@
+// src/services/incident.service.ts
 import { incidentRepository } from '../repositories/incident.repository.js';
 import { NotificationService } from './notification.service.js';
 import { reportIncidentSchema, updateIncidentSchema, incidentQuerySchema } from '@csirs/shared/schemas';
@@ -41,17 +42,23 @@ export class IncidentService {
     return incidentRepository.findWithFilters(validated);
   }
 
-  /**
-   * Get only the reporter's own incidents (My Reports)
-   */
-  static async getMyReports(reporterId: string, query: any) {
-    const validated = incidentQuerySchema.parse(query);
-    const filters = {
-      ...validated,
-      reporterId, // filter by logged-in user
-    };
-    return incidentRepository.findWithFilters(filters);
+/**
+ * Get only the reporter's own incidents (My Reports)
+ */
+static async getMyReports(reporterId: string, query: any) {
+  if (!reporterId) {
+    throw new Error('Reporter ID is required for My Reports');
   }
+
+  const validated = incidentQuerySchema.parse(query);
+  
+  const filters = {
+    ...validated,
+    reporterId,                    // ← This must be enforced
+  };
+
+  return incidentRepository.findWithFilters(filters);
+}
 
   /**
    * Update incident status / notes (admin only)
