@@ -27,6 +27,33 @@ class UserService {
     if (!user) throw new Error("User not found");
     return user;
   }
+
+  // Add these methods to your existing UserService class
+
+  async updateProfile(userId: string, name: string) {
+    if (!userId) throw new Error("User ID is required");
+
+    return userRepository.update(userId, { name }); // ← Fixed: now passing 2 arguments
+  }
+
+  async changePassword(
+    userId: string,
+    currentPassword: string,
+    newPassword: string,
+  ) {
+    // Verify current password
+    const user = await userRepository.findById(userId); // You'll need to extend findById to include password if not already
+    if (!user || !user.password) throw new Error("User not found");
+
+    const isValid = await userRepository.verifyPassword(
+      user.password,
+      currentPassword,
+    );
+    if (!isValid) throw new Error("Current password is incorrect");
+
+    // Update to new password
+    return userRepository.updatePassword(userId, newPassword);
+  }
 }
 
 export const userService = new UserService();

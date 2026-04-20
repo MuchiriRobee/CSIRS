@@ -70,4 +70,11 @@ router.patch(
   UserController.updateUserRole,
 );
 
+// Profile & Password management (authenticated users)
+router.patch("/auth/profile", authenticateJWT, UserController.updateProfile);
+router.post(
+  "/auth/change-password",
+  authenticateJWT,
+  UserController.changePassword,
+);
 export default router;

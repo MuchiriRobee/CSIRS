@@ -76,6 +76,7 @@ class UserRepository extends BaseRepository<any> {
         name: true,
         email: true,
         role: true,
+        password: true, // needed only for change password
         createdAt: true,
       },
     });
@@ -92,6 +93,15 @@ class UserRepository extends BaseRepository<any> {
     return this.model.findMany({
       where: { role: "ADMIN" },
       select: { id: true, email: true, name: true },
+    });
+  }
+
+  // Add inside UserRepository class
+
+  async updateProfile(userId: string, name: string) {
+    return this.model.update({
+      where: { id: userId },
+      data: { name },
     });
   }
 }
