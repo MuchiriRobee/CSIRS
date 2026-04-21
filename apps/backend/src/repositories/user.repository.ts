@@ -14,6 +14,7 @@ class UserRepository extends BaseRepository<any> {
       select: {
         id: true,
         email: true,
+        phone: true, // added for consistency with new registration flow
         name: true,
         role: true,
         password: true, // needed only for login verification
@@ -22,10 +23,23 @@ class UserRepository extends BaseRepository<any> {
     });
   }
 
+  // New method for phone uniqueness check (used in registration)
+  async findByPhone(phone: string) {
+    return this.model.findUnique({
+      where: { phone },
+      select: {
+        id: true,
+        email: true,
+        phone: true,
+      },
+    });
+  }
+
   async createUser(data: {
     email: string;
     password: string;
     name: string;
+    phone: string; // now required for new users (DB allows null for existing legacy users)
     role?: UserRole;
   }) {
     const hashedPassword = await bcrypt.hash(data.password, 12);
@@ -61,6 +75,7 @@ class UserRepository extends BaseRepository<any> {
         id: true,
         name: true,
         email: true,
+        phone: true, // added for consistency
         role: true,
         createdAt: true,
       },
@@ -75,6 +90,7 @@ class UserRepository extends BaseRepository<any> {
         id: true,
         name: true,
         email: true,
+        phone: true, // added for consistency
         role: true,
         password: true, // needed only for change password
         createdAt: true,
@@ -92,7 +108,7 @@ class UserRepository extends BaseRepository<any> {
   async findAllAdmins() {
     return this.model.findMany({
       where: { role: "ADMIN" },
-      select: { id: true, email: true, name: true },
+      select: { id: true, email: true, name: true, phone: true }, // added phone for future SMS use
     });
   }
 
