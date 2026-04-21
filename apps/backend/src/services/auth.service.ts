@@ -15,11 +15,17 @@ export class AuthService {
       throw new Error('User with this email already exists');
     }
 
+    const existingPhone = await userRepository.findByPhone(validated.phone);
+    if (existingPhone) {
+      throw new Error('User with this phone number already exists');
+    }
+
     // Create user (repository handles hashing)
     const newUser = await userRepository.createUser({
       email: validated.email,
       password: validated.password,
       name: validated.name,
+      phone: validated.phone,
       role: validated.role,
     });
 
@@ -31,6 +37,7 @@ export class AuthService {
         id: newUser.id,
         email: newUser.email,
         name: newUser.name,
+        phone: newUser.phone, // added for new registration flow and future SMS
         role: newUser.role,
       },
       ...tokens,
@@ -58,6 +65,7 @@ export class AuthService {
         id: user.id,
         email: user.email,
         name: user.name,
+        phone: user.phone, // added for consistency (null for legacy users)
         role: user.role,
       },
       ...tokens,
