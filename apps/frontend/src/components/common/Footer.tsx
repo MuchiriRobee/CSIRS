@@ -1,55 +1,120 @@
-import { Shield, Phone } from 'lucide-react';
+import { Shield, Phone, Mail, Clock, ArrowUpRight } from 'lucide-react';
+//import { motion } from 'framer-motion';
 
+const quickLinks = [
+  { label: 'Home', href: '/' },
+  { label: 'Register', href: '/register' },
+  { label: 'Login', href: '/login' },
+  { label: 'My Reports', href: '/my-reports' },
+];
+
+const emergencyContacts = [
+  { label: 'Security', number: '0700 123 456', tel: '0700123456' },
+  { label: 'Police', number: '999', tel: '999' },
+  { label: 'Fire & Ambulance', number: '119', tel: '119' },
+];
 
 export default function Footer() {
   return (
-    <footer className="bg-primary text-white py-12 mt-auto">
-      <div className="max-w-7xl mx-auto px-6 grid md:grid-cols-4 gap-10">
-        <div>
-          <div className="flex items-center gap-3 mb-4">
-            <Shield className="w-8 h-8" />
-            <span className="font-semibold text-2xl">CSIRS</span>
+    <footer className="footer mt-auto">
+      {/* Top gradient bar */}
+      <div className="footer-topbar" />
+
+      <div className="footer-body">
+        <div className="max-w-7xl mx-auto px-6 pt-14 pb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 lg:gap-8">
+
+            {/* ── Brand ── */}
+            <div className="lg:col-span-1">
+              <div className="flex items-center gap-3 mb-5">
+                <div className="footer-logo-icon">
+                  <Shield className="w-5 h-5 text-white" strokeWidth={2.5} />
+                </div>
+                <span className="footer-brand">CSIRS</span>
+              </div>
+              <p className="text-slate-400 text-sm leading-relaxed mb-6">
+                Campus Safety &amp; Incident Reporting System — protecting our TVET community around the clock.
+              </p>
+              <div className="footer-badge">
+                <span className="footer-badge-dot" />
+                System Online
+              </div>
+            </div>
+
+            {/* ── Quick Links ── */}
+            <div>
+              <h4 className="footer-section-title">Quick Links</h4>
+              <ul className="space-y-2.5">
+                {quickLinks.map(({ label, href }) => (
+                  <li key={href}>
+                    <a href={href} className="footer-link group">
+                      <ArrowUpRight className="w-3.5 h-3.5 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200 text-amber-400" />
+                      {label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* ── Emergency Contacts ── */}
+            <div>
+              <h4 className="footer-section-title">Emergency Contacts</h4>
+              <ul className="space-y-3">
+                {emergencyContacts.map(({ label, number, tel }) => (
+                  <li key={tel}>
+                    <a href={`tel:${tel}`} className="footer-emergency-link group">
+                      <span className="footer-emergency-icon">
+                        <Phone className="w-3.5 h-3.5" />
+                      </span>
+                      <span>
+                        <span className="text-slate-400 text-xs block">{label}</span>
+                        <span className="text-white font-semibold text-sm tracking-wide">{number}</span>
+                      </span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* ── Office ── */}
+            <div>
+              <h4 className="footer-section-title">Safety Office</h4>
+              <ul className="space-y-4">
+                <li>
+                  <a href="mailto:safety@tvetsafety.ac.ke" className="footer-office-item group">
+                    <span className="footer-office-icon">
+                      <Mail className="w-3.5 h-3.5" />
+                    </span>
+                    <span>
+                      <span className="text-slate-400 text-xs block">Email</span>
+                      <span className="text-amber-400 text-sm font-medium group-hover:text-amber-300 transition-colors">
+                        safety@tvetsafety.ac.ke
+                      </span>
+                    </span>
+                  </a>
+                </li>
+                <li>
+                  <div className="footer-office-item">
+                    <span className="footer-office-icon">
+                      <Clock className="w-3.5 h-3.5" />
+                    </span>
+                    <span>
+                      <span className="text-slate-400 text-xs block">Working Hours</span>
+                      <span className="text-white text-sm font-medium">8:00 AM – 5:00 PM</span>
+                    </span>
+                  </div>
+                </li>
+              </ul>
+            </div>
           </div>
-          <p className="text-sm text-slate-300">
-            Campus Safety & Incident Reporting System<br />
-            Protecting our TVET community.
-          </p>
-        </div>
 
-        <div>
-          <h4 className="font-semibold mb-4">Quick Links</h4>
-          <ul className="space-y-2 text-sm text-slate-300">
-            <li><a href="/" className="hover:text-orange-500 transition-colors duration-200">Home</a></li>
-            <li><a href="/register" className="hover:text-orange-500 transition-colors duration-200">Register</a></li>
-            <li><a href="/login" className="hover:text-orange-500 transition-colors duration-200">Login</a></li>
-          </ul>
+          {/* ── Bottom bar ── */}
+          <div className="footer-bottom">
+            <span>© {new Date().getFullYear()} CSIRS · TVET Institutions Campus Safety System</span>
+            <span className="footer-bottom-divider" />
+            <span>Built for student safety</span>
+          </div>
         </div>
-
-        <div>
-          <h4 className="font-semibold mb-4">Emergency Contacts</h4>
-          <ul className="space-y-3 text-sm">
-            <li className="flex items-center gap-2 hover:text-orange-500 hover:underline transition-colors duration-200">
-              <Phone className="w-4 h-4" /><a href=''>Security: 0700 123 456</a> 
-            </li>
-            <li className="flex items-center gap-2 hover:text-orange-500 hover:underline transition-colors duration-200">
-              <Phone className="w-4 h-4" /><a href=''>Police: 999</a>
-            </li>
-            <li className="flex items-center gap-2 hover:text-orange-500 hover:underline transition-colors duration-200">
-              <Phone className="w-4 h-4" /> <a href=''>Ambulance/Fire: 119</a>
-            </li>
-          </ul>
-        </div>
-
-        <div>
-          <h4 className="font-semibold mb-4">TVET Safety Office</h4>
-          <p style={{ color: 'orangered', fontWeight: 'Bold' }} className="hover:underline text-sm text-slate-300"><a href='mailto:safety@tvetsafety.ac.ke'>Email: safety@tvetsafety.ac.ke</a></p> 
-          <br/>
-          <p className="text-sm text-slate-300">Working Hours: 8:00 AM - 5:00 PM</p>
-        </div>
-      </div>
-
-      <div className="border-t border-white/20 mt-12 pt-6 text-center text-xs text-slate-400">
-        © {new Date().getFullYear()} CSIRS • TVET Institutions Campus Safety System
       </div>
     </footer>
   );
