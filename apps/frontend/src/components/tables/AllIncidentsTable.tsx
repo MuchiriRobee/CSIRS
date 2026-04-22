@@ -1,257 +1,494 @@
-// src/components/tables/AllIncidentsTable.tsx
 import { useState, useMemo } from 'react';
 import {
   useReactTable,
   getCoreRowModel,
   getPaginationRowModel,
   getFilteredRowModel,
+  getSortedRowModel,
   flexRender,
 } from '@tanstack/react-table';
-import type { ColumnDef } from '@tanstack/react-table';
-import { Button } from '../ui/button';
-import { Input } from '../ui/input';
-import { Badge } from '../ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import type { ColumnDef, SortingState, FilterFn } from '@tanstack/react-table';
 import { Skeleton } from '../ui/skeleton';
-import { Search } from 'lucide-react';
+import {
+  Select, SelectContent, SelectItem,
+  SelectTrigger, SelectValue,
+} from '../ui/select';
+import {
+  Search, ChevronUp, ChevronDown, ChevronsUpDown,
+  ArrowLeft, ArrowRight, Filter, X,
+  PhoneCall, ShieldOff,
+} from 'lucide-react';
 import { useGetAllIncidentsQuery, useUpdateIncidentStatusMutation } from '../../api/incidentApi';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { motion, AnimatePresence } from 'framer-motion';
 
+/* ── Types ──────────────────────────────────────────────── */
 type Incident = {
   id: string;
   category: string;
   location: string;
   description: string;
   status: 'PENDING' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
+  isAnonymous?: boolean;
   createdAt: string;
-  reporter?: { name: string } | null;   // ← Added
+  reporter?: { name: string; phone?: string | null } | null;
   reporterId?: string | null;
 };
 
-const statusOptions = ['PENDING', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'] as const;
+/* ── Config ─────────────────────────────────────────────── */
+const STATUS_OPTIONS = ['PENDING', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'] as const;
 
-const statusColors: Record<string, string> = {
-  PENDING: 'bg-yellow-100 text-yellow-800',
-  IN_PROGRESS: 'bg-blue-100 text-blue-800',
-  RESOLVED: 'bg-green-100 text-green-800',
-  CLOSED: 'bg-slate-100 text-slate-800',
+const STATUS_CFG: Record<string, { label: string; cls: string; selectCls: string }> = {
+  PENDING:     { label: 'Pending',     cls: 'ai-badge ai-badge--amber', selectCls: 'ai-status-opt--amber' },
+  IN_PROGRESS: { label: 'In Progress', cls: 'ai-badge ai-badge--blue',  selectCls: 'ai-status-opt--blue'  },
+  RESOLVED:    { label: 'Resolved',    cls: 'ai-badge ai-badge--green', selectCls: 'ai-status-opt--green' },
+  CLOSED:      { label: 'Closed',      cls: 'ai-badge ai-badge--slate', selectCls: 'ai-status-opt--slate' },
 };
 
+const CATEGORIES = [
+  { value: 'ALL',                  label: 'All Categories' },
+  { value: 'THEFT',                label: 'Theft' },
+  { value: 'PHYSICAL_ASSAULT',     label: 'Physical Assault' },
+  { value: 'SEXUAL_HARASSMENT',    label: 'Sexual Harassment' },
+  { value: 'FIRE_OUTBREAK',        label: 'Fire Outbreak' },
+  { value: 'MEDICAL_EMERGENCY',    label: 'Medical Emergency' },
+  { value: 'PROPERTY_DAMAGE',      label: 'Property Damage' },
+  { value: 'CYBER_BULLYING',       label: 'Cyberbullying' },
+  { value: 'INFRASTRUCTURE_ISSUE', label: 'Infrastructure Issue' },
+  { value: 'OTHER',                label: 'Other' },
+];
+
+/* ── Sort icon ──────────────────────────────────────────── */
+function SortIcon({ sorted }: { sorted: false | 'asc' | 'desc' }) {
+  if (sorted === 'asc')  return <ChevronUp   className="w-3.5 h-3.5 text-amber-500" />;
+  if (sorted === 'desc') return <ChevronDown  className="w-3.5 h-3.5 text-amber-500" />;
+  return <ChevronsUpDown className="w-3.5 h-3.5 text-slate-300" />;
+}
+
+/* ── Phone button ───────────────────────────────────────── */
+function PhoneCell({ phone }: { phone?: string | null }) {
+  if (!phone) return <span className="ai-td-muted ai-td-nil">—</span>;
+  return (
+    <a
+      href={`tel:${phone}`}
+      className="ai-phone-btn"
+      title={`Call ${phone}`}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <PhoneCall className="w-3.5 h-3.5" />
+      <span>{phone}</span>
+    </a>
+  );
+}
+
+/* ── Inline status selector ─────────────────────────────── */
+function StatusCell({
+  incident, onUpdate, isUpdating,
+}: {
+  incident: Incident;
+  onUpdate: (id: string, status: string) => void;
+  isUpdating: boolean;
+}) {
+  const cfg = STATUS_CFG[incident.status] ?? STATUS_CFG.CLOSED;
+  return (
+    <Select
+      value={incident.status}
+      onValueChange={(v) => onUpdate(incident.id, v)}
+      disabled={isUpdating}
+    >
+      <SelectTrigger className="ai-status-trigger">
+        <SelectValue>
+        <span className={cfg.cls}>{cfg.label}</span>
+        </SelectValue>
+      </SelectTrigger>
+      <SelectContent className="ai-status-dropdown">
+        {STATUS_OPTIONS.map((s) => {
+          const sc = STATUS_CFG[s];
+          return (
+            <SelectItem key={s} value={s} className="ai-status-item">
+              <span className={sc.cls}>{sc.label}</span>
+            </SelectItem>
+          );
+        })}
+      </SelectContent>
+    </Select>
+  );
+}
+
+/* ── Global filter fn (also searches reporter name) ─────── */
+const reporterAwareFilter: FilterFn<Incident> = (row, _colId, filterValue: string) => {
+  const q = filterValue.toLowerCase();
+  const { category, location, description, reporter } = row.original;
+  return (
+    category.toLowerCase().includes(q)   ||
+    location.toLowerCase().includes(q)   ||
+    description.toLowerCase().includes(q)||
+    (reporter?.name ?? '').toLowerCase().includes(q)
+  );
+};
+
+/* ═══════════════════════════════════════════════════════════
+   MAIN COMPONENT
+═══════════════════════════════════════════════════════════ */
 export default function AllIncidentsTable() {
-  const [globalFilter, setGlobalFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('ALL');
-  const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
+  const [globalFilter,   setGlobalFilter]   = useState('');
+  const [statusFilter,   setStatusFilter]   = useState('ALL');
+  const [categoryFilter, setCategoryFilter] = useState('ALL');
+  const [sorting,        setSorting]        = useState<SortingState>([{ id: 'createdAt', desc: true }]);
+  const [showFilters,    setShowFilters]    = useState(false);
 
   const { data: response, isLoading, refetch } = useGetAllIncidentsQuery({ page: 1, limit: 100 });
-
-// Extract the actual array
-  const incidents = response?.data?.data || response?.data || [];
-
+  const incidents: Incident[] = useMemo(
+    () => response?.data?.data || response?.data || [],
+    [response],
+  );
+  console.log("Fetched incidents:", incidents); // Debug log to verify data structure
   const [updateStatus, { isLoading: isUpdating }] = useUpdateIncidentStatusMutation();
 
-  const handleStatusChange = async (incidentId: string, newStatus: string) => {
+  const handleStatusChange = async (id: string, newStatus: string) => {
     try {
-      await updateStatus({ 
-        id: incidentId, 
-        status: newStatus as any, 
-        adminNotes: `Status changed to ${newStatus}`, 
-      }).unwrap();
+      await updateStatus({ id, status: newStatus as any, adminNotes: `Status changed to ${newStatus}` }).unwrap();
       toast.success(`Status updated to ${newStatus.replace('_', ' ')}`);
       refetch();
-    } catch (err) {
+    } catch {
       toast.error('Failed to update status');
     }
   };
 
-const columns: ColumnDef<Incident>[] = useMemo(() => [
-  { accessorKey: 'category', header: 'Category' },
-  { accessorKey: 'location', header: 'Location' },
-  {
-    accessorKey: 'description',
-    header: 'Description',
-    cell: ({ getValue }) => <div className="max-w-md truncate">{getValue() as string}</div>,
-  },
-  {
-    accessorKey: 'reporter',                    // ← NEW COLUMN
-    header: 'Reporter',
-    cell: ({ row }) => {
-      const reporter = row.original.reporter;
-      const isAnonymous = !row.original.reporterId;
-      return (
-        <div className="font-medium">
-          {isAnonymous ? (
-            <span className="text-muted-foreground italic">Anonymous</span>
-          ) : (
-            reporter?.name || 'Unknown'
-          )}
+  /* ── Columns ── */
+  const columns: ColumnDef<Incident>[] = useMemo(() => [
+    {
+      accessorKey: 'category',
+      header: 'Category',
+      enableSorting: true,
+      cell: ({ getValue }) => (
+        <div className="ai-td-category">
+          <span className="ai-category-dot" />
+          <span className="ai-td-primary">{(getValue() as string).replace(/_/g, ' ')}</span>
         </div>
-      );
+      ),
     },
-  },
-{
-  accessorKey: 'status',
-  header: 'Status',
-  cell: ({ row }) => {
-    const status = row.original.status;
-    return (
-      <Select 
-        value={status} 
-        onValueChange={(value) => handleStatusChange(row.original.id, value)}
-        disabled={isUpdating}
-      >
-        <SelectTrigger className="w-44">
-          <SelectValue>
-            <Badge 
-              variant="outline" 
-              className={statusColors[status] || 'bg-gray-100'}
-            >
-              {status.replace('_', ' ')}
-            </Badge>
-          </SelectValue>
-        </SelectTrigger>
-        <SelectContent>
-          {statusOptions.map((s) => (
-            <SelectItem key={s} value={s}>
-              {s.replace('_', ' ')}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    );
-  },
-},
-  {
-    accessorKey: 'createdAt',
-    header: 'Reported On',
-    cell: ({ getValue }) => format(new Date(getValue() as string), 'dd MMM yyyy, HH:mm'),
-  },
-], [isUpdating]);
+    {
+      accessorKey: 'location',
+      header: 'Location',
+      enableSorting: false,
+      cell: ({ getValue }) => <span className="ai-td-secondary">{getValue() as string}</span>,
+    },
+    {
+      accessorKey: 'description',
+      header: 'Description',
+      enableSorting: false,
+      cell: ({ getValue }) => <p className="ai-td-desc">{getValue() as string}</p>,
+    },
+    {
+      accessorKey: 'reporter',
+      header: 'Reporter',
+      enableSorting: true,
+      sortingFn: (a, b) => {
+        const na = a.original.reporter?.name ?? '';
+        const nb = b.original.reporter?.name ?? '';
+        return na.localeCompare(nb);
+      },
+      cell: ({ row }) => {
+        const reporter   = row.original.reporter;
+        const isAnon     = !row.original.reporterId;
+        return (
+          <div className="ai-td-reporter">
+            <div className={`ai-reporter-avatar ${isAnon ? 'ai-reporter-avatar--anon' : ''}`}>
+              {isAnon ? <ShieldOff className="w-3.5 h-3.5" /> : (reporter?.name?.[0]?.toUpperCase() ?? '?')}
+            </div>
+            <span className={isAnon ? 'ai-td-anon' : 'ai-td-reporter-name'}>
+              {isAnon ? 'Anonymous' : (reporter?.name ?? 'Unknown')}
+            </span>
+          </div>
+        );
+      },
+    },
+    {
+      id: 'phone',
+      header: 'Phone',
+      enableSorting: false,
+      cell: ({ row }) => {
+        const isAnon = !row.original.reporterId;
+        if (isAnon) return <span className="ai-td-muted ai-td-nil">—</span>;
+        return <PhoneCell phone={row.original.reporter?.phone} />;
+      },
+    },
+    {
+      accessorKey: 'status',
+      header: 'Status',
+      enableSorting: true,
+      cell: ({ row }) => (
+        <StatusCell
+          incident={row.original}
+          onUpdate={handleStatusChange}
+          isUpdating={isUpdating}
+        />
+      ),
+    },
+    {
+      accessorKey: 'createdAt',
+      header: 'Reported On',
+      enableSorting: true,
+      cell: ({ getValue }) => (
+        <span className="ai-td-date">
+          {format(new Date(getValue() as string), 'dd MMM yyyy')}
+          <span className="ai-td-time">{format(new Date(getValue() as string), 'HH:mm')}</span>
+        </span>
+      ),
+    },
+  ], [isUpdating]);
 
-const filteredData = useMemo(() => {
-  let result = incidents as Incident[];   // Now safe
-  if (statusFilter !== 'ALL') {
-    result = result.filter(r => r.status === statusFilter);
-  }
-  if (categoryFilter !== 'ALL') {
-    result = result.filter(r => r.category === categoryFilter);
-  }
-  return result;
-}, [incidents, statusFilter, categoryFilter]);
+  /* ── Filtered data ── */
+  const filteredData = useMemo(() => {
+    let r = incidents;
+    if (statusFilter   !== 'ALL') r = r.filter(i => i.status   === statusFilter);
+    if (categoryFilter !== 'ALL') r = r.filter(i => i.category === categoryFilter);
+    return r;
+  }, [incidents, statusFilter, categoryFilter]);
 
+  /* ── Table ── */
   const table = useReactTable({
     data: filteredData,
     columns,
-    getCoreRowModel: getCoreRowModel(),
+    filterFns: { reporterAwareFilter },
+    globalFilterFn: reporterAwareFilter,
+    getCoreRowModel:       getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    state: { globalFilter },
+    getFilteredRowModel:   getFilteredRowModel(),
+    getSortedRowModel:     getSortedRowModel(),
+    state: { globalFilter, sorting },
     onGlobalFilterChange: setGlobalFilter,
+    onSortingChange:      setSorting,
+    initialState: { pagination: { pageSize: 10 } },
   });
 
+  const { pageIndex, pageSize } = table.getState().pagination;
+  const total = filteredData.length;
+  const from  = pageIndex * pageSize + 1;
+  const to    = Math.min((pageIndex + 1) * pageSize, total);
+
+  const hasFilters = statusFilter !== 'ALL' || categoryFilter !== 'ALL' || !!globalFilter;
+  const clearFilters = () => { setStatusFilter('ALL'); setCategoryFilter('ALL'); setGlobalFilter(''); };
+
+  /* ── Loading ── */
   if (isLoading) {
-    return <div className="space-y-4">{[...Array(6)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}</div>;
+    return (
+      <div className="ai-skeleton-wrap">
+        {[...Array(6)].map((_, i) => <Skeleton key={i} className="ai-skeleton-row" />)}
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row gap-4 justify-between">
-        <div className="flex gap-3 flex-wrap">
-          <div className="relative w-72">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search incidents..."
-              value={globalFilter}
-              onChange={(e) => setGlobalFilter(e.target.value)}
-              className="pl-10"
-            />
-          </div>
+    <div className="ai-table-section">
 
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="border border-input rounded-xl px-4 py-2 text-sm"
+      {/* ── Controls ── */}
+      <div className="ai-controls">
+        <div className="ai-search-wrap">
+          <Search className="ai-search-icon" />
+          <input
+            type="text"
+            placeholder="Search category, location, description, reporter…"
+            value={globalFilter}
+            onChange={(e) => setGlobalFilter(e.target.value)}
+            className="ai-search-input"
+          />
+          {globalFilter && (
+            <button onClick={() => setGlobalFilter('')} className="ai-search-clear">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+
+        <div className="ai-controls-right">
+          <button
+            onClick={() => setShowFilters(v => !v)}
+            className={`ai-filter-btn ${showFilters ? 'ai-filter-btn--active' : ''}`}
           >
-            <option value="ALL">All Statuses</option>
-            {statusOptions.map(s => (
-              <option key={s} value={s}>{s.replace('_', ' ')}</option>
-            ))}
-          </select>
-
-          <select
-            value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
-            className="border border-input rounded-xl px-4 py-2 text-sm"
-          >                {/*  
-   THEFT
-  PHYSICAL_ASSAULT
-  SEXUAL_HARASSMENT
-  FIRE_OUTBREAK
-  MEDICAL_EMERGENCY
-  PROPERTY_DAMAGE
-  CYBER_BULLYING
-  INFRASTRUCTURE_ISSUE
-  OTHER */} 
-            <option value="ALL">All Categories</option>
-            <option value="THEFT">Theft</option>
-            <option value="PHYSICAL_ASSAULT">Physical Assault</option>
-            <option value="SEXUAL_HARASSMENT">Sexual Harassment</option>
-            <option value="FIRE_OUTBREAK">Fire Outbreak</option>
-            <option value="MEDICAL_EMERGENCY">Medical Emergency</option>
-              <option value="PROPERTY_DAMAGE">Property Damage</option>
-              <option value="CYBER_BULLYING">Cyberbullying</option>
-              <option value="INFRASTRUCTURE_ISSUE">Infrastructure Issue</option>
-          </select>
+            <Filter className="w-3.5 h-3.5" />
+            Filters
+            {hasFilters && <span className="ai-filter-dot" />}
+          </button>
         </div>
       </div>
 
-      <div className="bg-white rounded-3xl border shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-slate-50 border-b">
-              {table.getHeaderGroups().map(headerGroup => (
-                <tr key={headerGroup.id}>
-                  {headerGroup.headers.map(header => (
-                    <th key={header.id} className="px-6 py-4 text-left text-sm font-semibold text-slate-600">
-                      {flexRender(header.column.columnDef.header, header.getContext())}
+      {/* ── Filter panel ── */}
+      <AnimatePresence>
+        {showFilters && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+            className="ai-filter-panel"
+          >
+            <div className="ai-filter-inner">
+              <div className="ai-filter-group">
+                <label className="ai-filter-label">Status</label>
+                <select
+                  value={statusFilter}
+                  onChange={e => setStatusFilter(e.target.value)}
+                  className="ai-filter-select"
+                >
+                  <option value="ALL">All Statuses</option>
+                  {STATUS_OPTIONS.map(s => (
+                    <option key={s} value={s}>{s.replace('_', ' ')}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="ai-filter-group">
+                <label className="ai-filter-label">Category</label>
+                <select
+                  value={categoryFilter}
+                  onChange={e => setCategoryFilter(e.target.value)}
+                  className="ai-filter-select"
+                >
+                  {CATEGORIES.map(({ value, label }) => (
+                    <option key={value} value={value}>{label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="ai-filter-group">
+                <label className="ai-filter-label">Date Order</label>
+                <button
+                  onClick={() => setSorting([{
+                    id: 'createdAt',
+                    desc: !(sorting[0]?.id === 'createdAt' && sorting[0]?.desc),
+                  }])}
+                  className="ai-date-sort-btn"
+                >
+                  {sorting[0]?.id === 'createdAt' && sorting[0]?.desc
+                    ? <><ChevronDown className="w-3.5 h-3.5 text-amber-500" /> Newest first</>
+                    : <><ChevronUp   className="w-3.5 h-3.5 text-amber-500" /> Oldest first</>
+                  }
+                </button>
+              </div>
+
+              {hasFilters && (
+                <button onClick={clearFilters} className="ai-clear-btn">
+                  <X className="w-3.5 h-3.5" /> Clear all
+                </button>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Summary strip ── */}
+      <div className="ai-summary-strip">
+        <span className="ai-summary-text">
+          {total === 0 ? 'No results' : `${total} incident${total !== 1 ? 's' : ''} found`}
+          {hasFilters && <span className="ai-summary-filtered"> · filtered</span>}
+        </span>
+        <div className="ai-summary-badges">
+          {STATUS_OPTIONS.map(s => {
+            const count = incidents.filter(i => i.status === s).length;
+            const cfg = STATUS_CFG[s];
+            return (
+              <button
+                key={s}
+                onClick={() => setStatusFilter(statusFilter === s ? 'ALL' : s)}
+                className={`ai-summary-badge ${statusFilter === s ? 'ai-summary-badge--active' : ''} ${cfg.cls}`}
+              >
+                {cfg.label} {count}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── Table card ── */}
+      <div className="ai-table-card">
+        <div className="ai-table-scroll">
+          <table className="ai-table">
+            <thead>
+              {table.getHeaderGroups().map(hg => (
+                <tr key={hg.id}>
+                  {hg.headers.map(header => (
+                    <th
+                      key={header.id}
+                      className={`ai-th ${header.column.getCanSort() ? 'ai-th--sortable' : ''}`}
+                      onClick={header.column.getCanSort() ? header.column.getToggleSortingHandler() : undefined}
+                    >
+                      <span className="ai-th-inner">
+                        {flexRender(header.column.columnDef.header, header.getContext())}
+                        {header.column.getCanSort() && <SortIcon sorted={header.column.getIsSorted()} />}
+                      </span>
                     </th>
                   ))}
                 </tr>
               ))}
             </thead>
+
             <tbody>
-              {table.getRowModel().rows.length > 0 ? (
-                table.getRowModel().rows.map(row => (
-                  <tr key={row.id} className="border-b hover:bg-slate-50">
-                    {row.getVisibleCells().map(cell => (
-                      <td key={cell.id} className="px-6 py-4 text-sm">
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </td>
-                    ))}
+              <AnimatePresence mode="wait">
+                {table.getRowModel().rows.length > 0 ? (
+                  table.getRowModel().rows.map((row, i) => (
+                    <motion.tr
+                      key={row.id}
+                      initial={{ opacity: 0, y: 5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.03, duration: 0.28 }}
+                      className="ai-tr"
+                    >
+                      {row.getVisibleCells().map(cell => (
+                        <td key={cell.id} className="ai-td">
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </td>
+                      ))}
+                    </motion.tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={columns.length} className="ai-empty-cell">
+                      <div className="ai-empty">
+                        <ShieldOff className="w-9 h-9 text-slate-200" />
+                        <p className="ai-empty-title">No incidents found</p>
+                        <p className="ai-empty-sub">
+                          {hasFilters ? 'Try adjusting your filters or search term.' : 'No incidents have been reported yet.'}
+                        </p>
+                        {hasFilters && (
+                          <button onClick={clearFilters} className="ai-empty-clear">Clear filters</button>
+                        )}
+                      </div>
+                    </td>
                   </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={5} className="px-6 py-20 text-center text-muted-foreground">
-                    No incidents found
-                  </td>
-                </tr>
-              )}
+                )}
+              </AnimatePresence>
             </tbody>
           </table>
         </div>
 
-        <div className="flex items-center justify-between px-6 py-4 border-t">
-          <div className="text-sm text-muted-foreground">
-            Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}>
-              Previous
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>
-              Next
-            </Button>
+        {/* ── Pagination ── */}
+        <div className="ai-pagination">
+          <span className="ai-pagination-info">
+            {total > 0 ? `Showing ${from}–${to} of ${total} incidents` : 'No results'}
+          </span>
+
+          <div className="ai-pagination-controls">
+            <div className="ai-page-nums">
+              {Array.from({ length: table.getPageCount() }, (_, i) => i)
+                .slice(Math.max(0, pageIndex - 2), Math.min(table.getPageCount(), pageIndex + 3))
+                .map(i => (
+                  <button
+                    key={i}
+                    onClick={() => table.setPageIndex(i)}
+                    className={`ai-page-num ${pageIndex === i ? 'ai-page-num--active' : ''}`}
+                  >
+                    {i + 1}
+                  </button>
+                ))}
+            </div>
+            <button onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()} className="ai-page-arrow">
+              <ArrowLeft className="w-4 h-4" />
+            </button>
+            <button onClick={() => table.nextPage()} disabled={!table.getCanNextPage()} className="ai-page-arrow">
+              <ArrowRight className="w-4 h-4" />
+            </button>
           </div>
         </div>
       </div>
