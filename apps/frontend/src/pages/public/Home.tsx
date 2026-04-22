@@ -230,7 +230,6 @@ function CategoryCard({
 export default function Home() {
   const heroRef = useRef(null);
   const { scrollYProgress } = useScroll({ target: heroRef, offset: ['start start', 'end start'] });
-  const heroBgY = useTransform(scrollYProgress, [0, 1], ['0%', '18%']);
   const heroOpacity = useTransform(scrollYProgress, [0, 0.7], [1, 0]);
 
   return (
