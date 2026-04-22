@@ -2,23 +2,29 @@
 import { z } from "zod";
 import { UserRole } from "../types";
 
-export const registerSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
-  email: z.string().email("Invalid email address"),
-  phone: z
-    .string()
-    .regex(
-      /^\+254[0-9]{9}$/,
-      "Phone number must be in international format: +254 followed by 9 digits (e.g. +254712345678)",
-    )
-    .length(13, "Phone number must be exactly 13 characters"),
-  password: z
-    .string()
-    .min(8, "Password must be at least 8 characters")
-    .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
-    .regex(/[0-9]/, "Password must contain at least one number"),
-  role: z.nativeEnum(UserRole),
-});
+export const registerSchema = z
+  .object({
+    name: z.string().min(2, "Name must be at least 2 characters"),
+    email: z.string().email("Invalid email address"),
+    phone: z
+      .string()
+      .regex(
+        /^\+254[0-9]{9}$/,
+        "Phone number must be in international format: +254 followed by 9 digits (e.g. +254712345678)",
+      )
+      .length(13, "Phone number must be exactly 13 characters"),
+    password: z
+      .string()
+      .min(8, "Password must be at least 8 characters")
+      .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+      .regex(/[0-9]/, "Password must contain at least one number"),
+    confirmPassword: z.string().min(8, "Password confirmation is required"),
+    role: z.nativeEnum(UserRole),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"], // attaches error to confirmPassword field
+  });
 
 export const loginSchema = z.object({
   email: z.string().email("Invalid email address"),
