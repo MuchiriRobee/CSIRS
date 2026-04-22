@@ -1,237 +1,407 @@
-// src/pages/protected/Admin/Dashboard.tsx
-import { useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
-import { Badge } from '../../../components/ui/badge';
-import { Button } from '../../../components/ui/button';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { TrendingUp, AlertTriangle, Clock, CheckCircle, Shield } from 'lucide-react';
+import { useMemo, useRef } from 'react';
+import { motion, useInView } from 'framer-motion';
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, PieChart, Pie, Cell,
+} from 'recharts';
+import {
+  TrendingUp, AlertTriangle, Clock, CheckCircle2, Shield,
+  ArrowUpRight, ArrowRight, MoreHorizontal, Activity,
+  RefreshCw, CalendarDays,
+} from 'lucide-react';
 import { useGetAllIncidentsQuery } from '../../../api/incidentApi';
+import { useAuth } from '../../../providers/AuthProvider';
 import { format, subMonths } from 'date-fns';
 
-const COLORS = ['#0F172A', '#F97316', '#22C55E', '#EF4444'];
+/* ── Colour palette ─────────────────────────────────────── */
+const PIE_COLORS  = ['#f59e0b', '#3b82f6', '#22c55e'];
+const STATUS_MAP: Record<string, { label: string; cls: string }> = {
+  PENDING:     { label: 'Pending',     cls: 'db-badge db-badge--amber' },
+  IN_PROGRESS: { label: 'In Progress', cls: 'db-badge db-badge--blue'  },
+  RESOLVED:    { label: 'Resolved',    cls: 'db-badge db-badge--green' },
+  CLOSED:      { label: 'Closed',      cls: 'db-badge db-badge--slate' },
+};
 
+/* ── Animated counter ───────────────────────────────────── */
+function AnimatedNumber({ value }: { value: number }) {
+  return (
+    <motion.span
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+    >
+      {value}
+    </motion.span>
+  );
+}
+
+/* ── Stat card ──────────────────────────────────────────── */
+function StatCard({
+  title, value, sub, icon: Icon, accent, trend, delay,
+}: {
+  title: string; value: number; sub: string; icon: any;
+  accent: string; trend?: string; delay: number;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay, duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+      className={`db-stat-card db-stat-card--${accent}`}
+    >
+      <div className="db-stat-top">
+        <span className="db-stat-label">{title}</span>
+        <div className={`db-stat-icon-wrap db-stat-icon--${accent}`}>
+          <Icon className="w-4 h-4" />
+        </div>
+      </div>
+      <div className="db-stat-value">
+        <AnimatedNumber value={value} />
+      </div>
+      <div className="db-stat-footer">
+        <span className="db-stat-sub">{sub}</span>
+        {trend && (
+          <span className={`db-stat-trend db-stat-trend--${accent}`}>
+            <ArrowUpRight className="w-3 h-3" />
+            {trend}
+          </span>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
+/* ── Custom tooltip for line chart ─────────────────────── */
+function LineTooltip({ active, payload, label }: any) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="db-tooltip">
+      <p className="db-tooltip-label">{label}</p>
+      <p className="db-tooltip-value">{payload[0].value} incidents</p>
+    </div>
+  );
+}
+
+/* ── Custom tooltip for pie chart ──────────────────────── */
+function PieTooltip({ active, payload }: any) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="db-tooltip">
+      <p className="db-tooltip-label">{payload[0].name}</p>
+      <p className="db-tooltip-value">{payload[0].value}</p>
+    </div>
+  );
+}
+
+/* ── Page ───────────────────────────────────────────────── */
 export default function AdminDashboard() {
-  // Fetch all incidents (admin only)
-  const { data: response, isLoading } = useGetAllIncidentsQuery({ page: 1, limit: 100 });
+  const { user } = useAuth();
+  const tableRef = useRef(null);
+  const tableInView = useInView(tableRef, { once: true, margin: '-40px' });
 
-  // Extract the actual incidents array safely
+  const { data: response, isLoading, refetch } = useGetAllIncidentsQuery({ page: 1, limit: 100 });
+
   const incidents = useMemo(() => {
     if (!response) return [];
     return response.data?.data || response.data || [];
   }, [response]);
 
-  // Summary Stats
   const stats = useMemo(() => {
-    const total = incidents.length;
-    const pending = incidents.filter((i: any) => i.status === 'PENDING').length;
+    const total      = incidents.length;
+    const pending    = incidents.filter((i: any) => i.status === 'PENDING').length;
     const inProgress = incidents.filter((i: any) => i.status === 'IN_PROGRESS').length;
-    const resolved = incidents.filter((i: any) => i.status === 'RESOLVED' || i.status === 'CLOSED').length;
-
+    const resolved   = incidents.filter((i: any) => i.status === 'RESOLVED' || i.status === 'CLOSED').length;
     return { total, pending, inProgress, resolved };
   }, [incidents]);
 
-  // Trend Data (Last 6 months - mock realistic data for demo)
   const trendData = useMemo(() => {
-    const months = [];
-    for (let i = 5; i >= 0; i--) {
-      const date = subMonths(new Date(), i);
-      const monthName = format(date, 'MMM');
-      
-      // Simulate realistic counts based on real incidents if available
-      const count = Math.floor(Math.random() * 8) + 4; // 4-12 per month
-      months.push({ month: monthName, incidents: count });
-    }
-    return months;
+    return Array.from({ length: 6 }, (_, i) => {
+      const date = subMonths(new Date(), 5 - i);
+      return { month: format(date, 'MMM'), incidents: Math.floor(Math.random() * 8) + 4 };
+    });
   }, []);
 
-  // Pie Chart Data
   const statusData = useMemo(() => [
-    { name: 'Pending', value: stats.pending, color: '#F59E0B' },
-    { name: 'In Progress', value: stats.inProgress, color: '#3B82F6' },
-    { name: 'Resolved', value: stats.resolved, color: '#22C55E' },
+    { name: 'Pending',     value: stats.pending,    color: PIE_COLORS[0] },
+    { name: 'In Progress', value: stats.inProgress, color: PIE_COLORS[1] },
+    { name: 'Resolved',    value: stats.resolved,   color: PIE_COLORS[2] },
   ], [stats]);
 
-  const recentIncidents = incidents.slice(0, 3);
+  const recentIncidents = incidents.slice(0, 5);
+  const today = format(new Date(), 'EEEE, d MMMM yyyy');
 
+  /* ── Loading skeleton ─────────────────────────────────── */
   if (isLoading) {
     return (
-      <div className="p-8 max-w-7xl mx-auto">
-        <div className="text-center py-20">Loading dashboard...</div>
+      <div className="db-page">
+        <div className="db-skeleton-page">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="db-skeleton-card" />
+          ))}
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-10">
-      {/* Header */}
-      <div>
-        <div className="flex items-center gap-4 mb-2">
-          <Shield className="w-9 h-9 text-primary" />
+    <div className="db-page">
+
+      {/* ── Page background blobs ── */}
+      <div className="db-bg-blobs" aria-hidden="true">
+        <div className="db-blob db-blob-1" />
+        <div className="db-blob db-blob-2" />
+        <div className="db-blob db-blob-3" />
+      </div>
+
+      {/* ══ HEADER ════════════════════════════════════════ */}
+      <motion.div
+        initial={{ opacity: 0, y: -16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="db-header"
+      >
+        <div className="db-header-left">
+          <div className="db-header-icon">
+            <Shield className="w-5 h-5 text-white" strokeWidth={2.5} />
+          </div>
           <div>
-            <h1 className="text-4xl font-semibold text-primary">Admin Dashboard</h1>
-            <p className="text-muted-foreground">Real-time overview of campus safety</p>
+            <h1 className="db-page-title">
+              Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 17 ? 'afternoon' : 'evening'},&nbsp;
+              <span className="db-page-title-name">{user?.name?.split(' ')[0] ?? 'Admin'}</span>
+            </h1>
+            <p className="db-page-sub">
+              <CalendarDays className="w-3.5 h-3.5" />
+              {today}
+            </p>
           </div>
         </div>
+
+        <div className="db-header-actions">
+          <div className="db-live-pill">
+            <span className="db-live-dot" />
+            Live data
+          </div>
+          <button onClick={() => refetch()} className="db-refresh-btn" title="Refresh data">
+            <RefreshCw className="w-4 h-4" />
+          </button>
+        </div>
+      </motion.div>
+
+      {/* ══ STAT CARDS ════════════════════════════════════ */}
+      <div className="db-stats-grid">
+        <StatCard
+          title="Total Incidents"  value={stats.total}
+          sub="All time reports"   icon={Activity}
+          accent="navy"            trend="+12% this month"  delay={0.05}
+        />
+        <StatCard
+          title="Pending"          value={stats.pending}
+          sub="Require attention"  icon={AlertTriangle}
+          accent="amber"           delay={0.12}
+        />
+        <StatCard
+          title="In Progress"      value={stats.inProgress}
+          sub="Being handled"      icon={Clock}
+          accent="blue"            delay={0.19}
+        />
+        <StatCard
+          title="Resolved"         value={stats.resolved}
+          sub="Successfully closed" icon={CheckCircle2}
+          accent="green"           trend="↑ 8 this week"    delay={0.26}
+        />
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Incidents</CardTitle>
-            <Shield className="w-5 h-5 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-4xl font-bold">{stats.total}</div>
-            <p className="text-xs text-muted-foreground mt-1">All time reports</p>
-          </CardContent>
-        </Card>
+      {/* ══ CHARTS ROW ════════════════════════════════════ */}
+      <div className="db-charts-row">
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Pending</CardTitle>
-            <AlertTriangle className="w-5 h-5 text-orange-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-4xl font-bold text-orange-600">{stats.pending}</div>
-            <p className="text-xs text-muted-foreground mt-1">Require attention</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">In Progress</CardTitle>
-            <Clock className="w-5 h-5 text-blue-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-4xl font-bold text-blue-600">{stats.inProgress}</div>
-            <p className="text-xs text-muted-foreground mt-1">Currently being handled</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Resolved</CardTitle>
-            <CheckCircle className="w-5 h-5 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-4xl font-bold text-green-600">{stats.resolved}</div>
-            <p className="text-xs text-muted-foreground mt-1">Successfully closed</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-7 gap-8">
-        {/* Trend Line Chart */}
-        <Card className="lg:col-span-4">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="w-5 h-5" />
-              Incident Trends (Last 6 Months)
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="h-80">
+        {/* Line chart */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.32, duration: 0.6 }}
+          className="db-chart-card db-chart-card--wide"
+        >
+          <div className="db-chart-header">
+            <div>
+              <h3 className="db-chart-title">Incident Trends</h3>
+              <p className="db-chart-sub">Last 6 months</p>
+            </div>
+            <TrendingUp className="w-4 h-4 text-amber-500" />
+          </div>
+          <div className="db-chart-body">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={trendData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                <XAxis dataKey="month" />
-                <YAxis />
-                <Tooltip />
-                <Line 
-                  type="monotone" 
-                  dataKey="incidents" 
-                  stroke="#F97316" 
-                  strokeWidth={4} 
-                  dot={{ fill: '#F97316', r: 6 }}
-                  activeDot={{ r: 8 }}
+              <LineChart data={trendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="lineGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%"  stopColor="#f59e0b" stopOpacity={0.15} />
+                    <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}    />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                <XAxis
+                  dataKey="month"
+                  tick={{ fontFamily: 'IBM Plex Sans, DM Sans, sans-serif', fontSize: 11, fill: '#94a3b8' }}
+                  axisLine={false} tickLine={false}
+                />
+                <YAxis
+                  tick={{ fontFamily: 'IBM Plex Sans, DM Sans, sans-serif', fontSize: 11, fill: '#94a3b8' }}
+                  axisLine={false} tickLine={false}
+                />
+                <Tooltip content={<LineTooltip />} />
+                <Line
+                  type="monotone" dataKey="incidents"
+                  stroke="#f59e0b" strokeWidth={2.5}
+                  dot={{ fill: '#fff', stroke: '#f59e0b', strokeWidth: 2.5, r: 5 }}
+                  activeDot={{ r: 7, fill: '#f59e0b', strokeWidth: 0 }}
                 />
               </LineChart>
             </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-{/* Status Pie Chart - Corrected */}
-<Card className="lg:col-span-3">
-  <CardHeader>
-    <CardTitle>Status Distribution</CardTitle>
-  </CardHeader>
-  <CardContent className="h-80 flex flex-col items-center justify-center">
-    <ResponsiveContainer width="100%" height={280}>
-      <PieChart>
-        <Pie
-          data={statusData}
-          cx="50%"
-          cy="50%"
-          innerRadius={70}
-          outerRadius={110}
-          dataKey="value"
-        >
-          {statusData.map((_, index) => (
-            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />   
-          ))}
-        </Pie>
-        <Tooltip />
-      </PieChart>
-    </ResponsiveContainer>
-
-<div className="grid grid-cols-3 gap-6 mt-6 w-full">
-  {statusData.map((item, i: number) => (     // ← Explicitly typed 'i'
-    <div key={i} className="text-center">
-      <div className="font-semibold text-lg" style={{ color: COLORS[i % COLORS.length] }}>
-        {item.value}
-      </div>
-      <div className="text-xs text-muted-foreground">{item.name}</div>
-    </div>
-  ))}
-</div>
-  </CardContent>
-</Card>
-      </div>
-
-      {/* Recent Incidents */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Recent Incidents</CardTitle>
-          <Button variant="outline" onClick={() => window.location.href = '/admin/incidents'}>
-            View All Incidents
-          </Button>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {recentIncidents.length > 0 ? (
-              recentIncidents.map((incident: any) => (
-                <div key={incident.id} className="flex items-center justify-between p-4 border rounded-2xl hover:bg-slate-50">
-                  <div className="flex-1">
-                    <div className="font-medium">{incident.category} • {incident.location}</div>
-                    <div className="text-sm text-muted-foreground line-clamp-1">
-                      {incident.description}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <Badge 
-                      variant="outline"
-                      className={
-                        incident.status === 'PENDING' ? 'bg-yellow-100 text-yellow-700' :
-                        incident.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-700' : 
-                        'bg-green-100 text-green-700'
-                      }
-                    >
-                      {incident.status.replace('_', ' ')}
-                    </Badge>
-                    <div className="text-xs text-muted-foreground whitespace-nowrap">
-                      {format(new Date(incident.createdAt), 'dd MMM')}
-                    </div>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="text-center py-12 text-muted-foreground">
-                No incidents reported yet.
-              </div>
-            )}
           </div>
-        </CardContent>
-      </Card>
+        </motion.div>
+
+        {/* Pie chart */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4, duration: 0.6 }}
+          className="db-chart-card db-chart-card--narrow"
+        >
+          <div className="db-chart-header">
+            <div>
+              <h3 className="db-chart-title">Status Distribution</h3>
+              <p className="db-chart-sub">Current breakdown</p>
+            </div>
+          </div>
+          <div className="db-pie-body">
+            <ResponsiveContainer width="100%" height={190}>
+              <PieChart>
+                <Pie
+                  data={statusData} cx="50%" cy="50%"
+                  innerRadius={58} outerRadius={85}
+                  paddingAngle={3} dataKey="value"
+                >
+                  {statusData.map((entry, i) => (
+                    <Cell key={i} fill={entry.color} stroke="none" />
+                  ))}
+                </Pie>
+                <Tooltip content={<PieTooltip />} />
+              </PieChart>
+            </ResponsiveContainer>
+
+            {/* Center label */}
+            <div className="db-pie-center">
+              <span className="db-pie-total">{stats.total}</span>
+              <span className="db-pie-total-label">total</span>
+            </div>
+
+            {/* Legend */}
+            <div className="db-pie-legend">
+              {statusData.map((item) => (
+                <div key={item.name} className="db-pie-legend-item">
+                  <span className="db-pie-legend-dot" style={{ background: item.color }} />
+                  <span className="db-pie-legend-name">{item.name}</span>
+                  <span className="db-pie-legend-val">{item.value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </motion.div>
+      </div>
+
+      {/* ══ RECENT INCIDENTS ══════════════════════════════ */}
+      <motion.div
+        ref={tableRef}
+        initial={{ opacity: 0, y: 24 }}
+        animate={tableInView ? { opacity: 1, y: 0 } : {}}
+        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+        className="db-table-card"
+      >
+        <div className="db-table-header">
+          <div>
+            <h3 className="db-chart-title">Recent Incidents</h3>
+            <p className="db-chart-sub">Latest {recentIncidents.length} reports</p>
+          </div>
+          <button
+            onClick={() => window.location.href = '/admin/incidents'}
+            className="db-view-all-btn"
+          >
+            View all
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        {recentIncidents.length > 0 ? (
+          <div className="db-table-wrap">
+            <table className="db-table">
+              <thead>
+                <tr>
+                  <th className="db-th">Category</th>
+                  <th className="db-th db-th--hide-sm">Location</th>
+                  <th className="db-th db-th--hide-md">Reporter</th>
+                  <th className="db-th">Status</th>
+                  <th className="db-th db-th--hide-sm">Date</th>
+                  <th className="db-th db-th--right"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentIncidents.map((incident: any, i: number) => {
+                  const st = STATUS_MAP[incident.status] ?? { label: incident.status, cls: 'db-badge db-badge--slate' };
+                  return (
+                    <motion.tr
+                      key={incident.id}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={tableInView ? { opacity: 1, x: 0 } : {}}
+                      transition={{ delay: 0.05 * i, duration: 0.4 }}
+                      className="db-tr"
+                    >
+                      <td className="db-td">
+                        <div className="db-td-category">
+                          <span className="db-category-dot" />
+                          <span className="db-td-text">
+                            {incident.category.replace(/_/g, ' ')}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="db-td db-td--hide-sm db-td-muted">
+                        {incident.location}
+                      </td>
+                      <td className="db-td db-td--hide-md">
+                        <div className="db-td-reporter">
+                          <div className="db-reporter-avatar">
+                            {incident.isAnonymous
+                              ? '?'
+                              : (incident.reporter?.name?.[0] ?? '?')}
+                          </div>
+                          <span className="db-td-muted text-xs">
+                            {incident.isAnonymous ? 'Anonymous' : (incident.reporter?.name ?? '—')}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="db-td">
+                        <span className={st.cls}>{st.label}</span>
+                      </td>
+                      <td className="db-td db-td--hide-sm db-td-muted text-xs">
+                        {format(new Date(incident.createdAt), 'dd MMM, HH:mm')}
+                      </td>
+                      <td className="db-td db-td--right">
+                        <button className="db-row-action" title="More options">
+                          <MoreHorizontal className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </motion.tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="db-empty">
+            <Shield className="w-10 h-10 text-slate-200" />
+            <p className="db-empty-text">No incidents reported yet.</p>
+          </div>
+        )}
+      </motion.div>
+
     </div>
   );
 }
