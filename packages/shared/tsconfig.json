@@ -12,8 +12,9 @@
     "declaration": true,
     "declarationMap": true,
     "jsx": "react-jsx",
-    "lib": ["ESNext", "DOM"]
+    "lib": ["ESNext", "DOM"],
+    "types": ["react", "react-dom"]
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "**/*.tsx"]
+  "exclude": ["node_modules", "dist"]
 }
