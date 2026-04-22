@@ -19,7 +19,7 @@
     }
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc -p tsconfig.json",
     "type-check": "tsc --noEmit"
   },
   "devDependencies": {
