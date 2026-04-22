@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/apps/frontend/index.html"
+    }
+  ]
+}
