@@ -8,6 +8,7 @@ import Register from '../pages/public/Register';
 
 // Protected Pages
 import MyReports from '../pages/protected/MyReports';
+import ReporterSettings from '../pages/protected/Settings';
 import AdminDashboard from '../pages/protected/Admin/Dashboard';
 import AdminIncidents from '../pages/protected/Admin/Incidents';
 import AdminUsers from '../pages/protected/Admin/Users';
@@ -24,6 +25,7 @@ export default function AppRoutes() {
       {/* Protected Reporter Routes */}
       <Route element={<ProtectedRoute />}>
         <Route path="/my-reports" element={<MyReports />} />
+        <Route path="/settings" element={<ReporterSettings />} />
       </Route>
 
       {/* Admin Only Routes */}
