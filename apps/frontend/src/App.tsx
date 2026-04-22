@@ -27,7 +27,7 @@ function Layout() {
         </main>
       </div>
 
-      {!isAdminRoute && <Footer />}
+      {!isAdminRoute }
     </div>
   );
 }
