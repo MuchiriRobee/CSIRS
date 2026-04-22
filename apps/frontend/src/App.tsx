@@ -6,7 +6,7 @@ import { AuthProvider } from "./providers/AuthProvider";
 import AppRoutes from "./routes";
 import EmergencyBar from "./components/common/EmergencyBar";
 import Navbar from "./components/common/Navbar";
-import Footer from "./components/common/Footer";
+// import Footer from "./components/common/Footer";
 import { useLocation } from "react-router-dom";
 import AdminSidebar from "./components/common/AdminSidebar";
 
