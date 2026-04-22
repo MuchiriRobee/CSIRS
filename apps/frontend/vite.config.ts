@@ -8,10 +8,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
-      "@csirs/shared": path.resolve(__dirname, "../../packages/shared/src"),
+      "@csirs/shared": path.resolve(__dirname, "../../packages/shared/dist"),
     },
-  },
-  optimizeDeps: {
-    include: ["@csirs/shared"],
   },
 });
