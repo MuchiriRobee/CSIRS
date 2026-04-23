@@ -108,13 +108,24 @@ export default function Navbar() {
                   <FileText className="mr-2 h-4 w-4 text-slate-400" />
                   My Reports
                 </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => navigate('/settings')}
-                  className="dropdown-item"
-                >
-                  <Settings className="mr-2 h-4 w-4 text-slate-400" />
-                  Settings
-                </DropdownMenuItem>
+                {user.role === 'ADMIN' && (
+                  <DropdownMenuItem
+                    onClick={() => navigate('/admin/settings')}
+                    className="dropdown-item"
+                  >
+                    <Settings className="mr-2 h-4 w-4 text-slate-400" />
+                    Settings
+                  </DropdownMenuItem>
+                )}
+                {user.role === 'REPORTER' && (
+                  <DropdownMenuItem
+                    onClick={() => navigate('/settings')}
+                    className="dropdown-item"
+                  >
+                    <Settings className="mr-2 h-4 w-4 text-slate-400" />
+                    Settings
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={handleLogout}
