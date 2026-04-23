@@ -4553,19 +4553,25 @@ body {
   min-height: 100vh;
   background: linear-gradient(145deg, #f0f4f8 0%, #f8f9fb 55%, #eef2f7 100%);
   overflow-x: hidden;
+  width: 100%;          /* add this */
+  box-sizing: border-box;
   font-family: 'IBM Plex Sans', 'DM Sans', sans-serif;
 }
 
+/* Replace existing .ai-page-inner */
 .ai-page-inner {
   position: relative;
   z-index: 1;
-  max-width: 1400px;
+  max-width: 100%;          /* was 1400px — too wide when sidebar is present */
+  width: 100%;
   margin: 0 auto;
   padding: 2.25rem 1.5rem 3rem;
+  overflow: hidden;          /* prevent bleed-out */
+  box-sizing: border-box;
 }
 
 @media (min-width: 640px) {
-  .ai-page-inner { padding: 2.5rem 2.5rem 4rem; }
+  .ai-page-inner { padding: 2.5rem 2rem 4rem; }  /* reduced side padding from 2.5rem */
 }
 
 /* Blobs */
@@ -4622,21 +4628,30 @@ body {
 /* ══════════════════════════════════════════════════════════
    CONTROLS
 ══════════════════════════════════════════════════════════ */
-.ai-table-section { display: flex; flex-direction: column; gap: 0.75rem; }
+.ai-table-section { 
+  display: flex; 
+  flex-direction: column; 
+  gap: 0.75rem; 
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+}
 
+/* Replace existing .ai-controls */
 .ai-controls {
   display: flex;
   align-items: center;
   gap: 0.75rem;
   flex-wrap: wrap;
+  width: 100%;
 }
 
-/* Search */
+/* Replace existing .ai-search-wrap */
 .ai-search-wrap {
   position: relative;
-  flex: 1;
-  min-width: 220px;
-  max-width: 480px;
+  flex: 1 1 200px;           /* flex-grow + shrink, min 200px */
+  min-width: 0;              /* allows shrinking below content size */
+  max-width: 100%;           /* was capped at 480px which forced overflow */
 }
 
 .ai-search-icon {
@@ -4758,8 +4773,12 @@ body {
 /* ── Summary strip ──────────────────────────────────────── */
 .ai-summary-strip {
   display: flex; align-items: center; justify-content: space-between;
-  gap: 1rem; flex-wrap: wrap;
+  gap: 0.75rem;
+  flex-wrap: wrap;        /* allow wrapping */
   padding: 0 2px;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .ai-summary-text {
@@ -4769,7 +4788,7 @@ body {
 
 .ai-summary-filtered { color: #d97706; }
 
-.ai-summary-badges { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.ai-summary-badges { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; min-width: 0;}
 
 .ai-summary-badge {
   font-family: 'IBM Plex Sans', sans-serif;
@@ -4786,23 +4805,83 @@ body {
 /* ══════════════════════════════════════════════════════════
    TABLE
 ══════════════════════════════════════════════════════════ */
+/* Replace existing .ai-table-card */
 .ai-table-card {
   background: white;
   border-radius: 16px;
   border: 1px solid #eef1f6;
   box-shadow: 0 1px 3px rgba(15,23,42,0.05), 0 6px 20px -6px rgba(15,23,42,0.09);
   overflow: hidden;
+  width: 100%;
+  max-width: 100%;           /* prevent the card itself from exceeding its parent */
 }
 
+/* Replace existing .ai-table-scroll */
 .ai-table-scroll {
   overflow-x: auto;
+  overflow-y: visible;
+  width: 100%;
+  max-width: 100%;
+  -webkit-overflow-scrolling: touch;  /* smooth scroll on mobile/tablet */
   scrollbar-width: thin;
   scrollbar-color: #e2e8f0 transparent;
 }
 .ai-table-scroll::-webkit-scrollbar { height: 5px; }
 .ai-table-scroll::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
 
-.ai-table { width: 100%; border-collapse: collapse; font-family: 'IBM Plex Sans', sans-serif; min-width: 900px; }
+.ai-table { 
+  width: 100%; 
+  border-collapse: collapse; 
+  font-family: 'IBM Plex Sans', sans-serif; 
+  min-width: 700px;          /* was 900px — caused overflow on ~1024px laptops with sidebar */
+  table-layout: auto;
+ }
+
+ /* Add this — targets the flex wrapper containing sidebar + main */
+.flex.flex-1 {
+  min-width: 0;
+  overflow: hidden;
+  width: 100%;
+}
+
+/* The main content area must be allowed to shrink */
+main.flex-1 {
+  min-width: 0;      /* critical — without this, flex-1 won't shrink past content */
+  overflow: hidden;
+  width: 0;          /* combined with flex-1 this forces proper flex shrinking */
+}
+
+ /* Add these — progressively hide columns as screen shrinks */
+
+/* Hide Description column on screens below 1100px */
+@media (max-width: 1100px) {
+  .ai-table th:nth-child(3),
+  .ai-table td:nth-child(3) {
+    display: none;
+  }
+}
+
+/* Also hide Phone on screens below 900px */
+@media (max-width: 900px) {
+  .ai-table th:nth-child(5),
+  .ai-table td:nth-child(5) {
+    display: none;
+  }
+}
+
+/* On mobile, keep only Category, Status, and Date */
+@media (max-width: 640px) {
+  .ai-table th:nth-child(2),
+  .ai-table td:nth-child(2),
+  .ai-table th:nth-child(4),
+  .ai-table td:nth-child(4) {
+    display: none;
+  }
+
+  .ai-table {
+    min-width: 360px;
+  }
+}
 
 /* TH */
 .ai-th {
