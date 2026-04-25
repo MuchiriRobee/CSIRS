@@ -133,6 +133,28 @@ class IncidentRepository extends BaseRepository<any> {
       data: { incidentId, authorId, content },
     });
   }
+
+  /**
+   * Fetch all comments for a specific incident with author details
+   * Ordered by creation date (newest first)
+   */
+  async getCommentsByIncidentId(incidentId: string) {
+    return prisma.incidentComment.findMany({
+      where: { incidentId },
+      orderBy: { createdAt: "desc" },
+      include: {
+        author: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true, // Ready for future SMS notifications
+            role: true,
+          },
+        },
+      },
+    });
+  }
 }
 
 export const incidentRepository = new IncidentRepository();
