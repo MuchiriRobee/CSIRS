@@ -1,3 +1,4 @@
+// src/api/incidentApi.ts
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
 const baseUrl = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
@@ -14,7 +15,7 @@ export const incidentApi = createApi({
       return headers;
     },
   }),
-  tagTypes: ["Incidents", "MyReports"],
+  tagTypes: ["Incidents", "MyReports", "IncidentComments"],
   endpoints: (builder) => ({
     createIncident: builder.mutation({
       query: (body: FormData) => ({
@@ -45,6 +46,24 @@ export const incidentApi = createApi({
       }),
       invalidatesTags: ["Incidents"],
     }),
+
+    getIncidentComments: builder.query({
+  query: (incidentId: string) => `/incidents/${incidentId}/comments`,
+  providesTags: (incidentId) => [
+    { type: "IncidentComments", id: incidentId },
+  ],
+}),
+
+addComment: builder.mutation({
+  query: ({ incidentId, content }: { incidentId: string; content: string }) => ({
+    url: `/incidents/${incidentId}/comments`,
+    method: "POST",
+    body: { content },
+  }),
+  invalidatesTags: ({ incidentId }) => [
+    { type: "IncidentComments", id: incidentId },
+  ],
+}),
   }),
 });
 
@@ -53,4 +72,6 @@ export const {
   useGetMyReportsQuery,
   useGetAllIncidentsQuery,
   useUpdateIncidentStatusMutation,
+  useGetIncidentCommentsQuery,
+  useAddCommentMutation,
 } = incidentApi;
