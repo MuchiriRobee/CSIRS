@@ -103,4 +103,16 @@ static async getMyReports(reporterId: string, query: any) {
 
     return comment;
   }
+
+    /**
+   * Get all comments for an incident
+   */
+  static async getIncidentComments(incidentId: string) {
+    // Optional: You can add extra validation here if needed
+    if (!incidentId) {
+      throw new Error('Incident ID is required');
+    }
+
+    return incidentRepository.getCommentsByIncidentId(incidentId);
+  }
 }
