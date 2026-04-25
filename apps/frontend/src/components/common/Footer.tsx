@@ -1,17 +1,17 @@
-import { Shield, Phone, Mail, Clock, ArrowUpRight } from 'lucide-react';
+import { Shield, Phone, Mail, Clock, ArrowUpRight } from "lucide-react";
 //import { motion } from 'framer-motion';
 
 const quickLinks = [
-  { label: 'Home', href: '/' },
-  { label: 'Register', href: '/register' },
-  { label: 'Login', href: '/login' },
-  { label: 'My Reports', href: '/my-reports' },
+  { label: "Home", href: "/" },
+  { label: "Register", href: "/register" },
+  { label: "Login", href: "/login" },
+  { label: "My Reports", href: "/my-reports" },
 ];
 
 const emergencyContacts = [
-  { label: 'Security', number: '0700 123 456', tel: '0700123456' },
-  { label: 'Police', number: '999', tel: '999' },
-  { label: 'Fire & Ambulance', number: '119', tel: '119' },
+  { label: "Security", number: "0700 123 456", tel: "0700123456" },
+  { label: "Police", number: "999", tel: "999" },
+  { label: "Fire & Ambulance", number: "119", tel: "119" },
 ];
 
 export default function Footer() {
@@ -23,7 +23,6 @@ export default function Footer() {
       <div className="footer-body">
         <div className="max-w-7xl mx-auto px-6 pt-14 pb-8">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 lg:gap-8">
-
             {/* ── Brand ── */}
             <div className="lg:col-span-1">
               <div className="flex items-center gap-3 mb-5">
@@ -33,7 +32,8 @@ export default function Footer() {
                 <span className="footer-brand">CSIRS</span>
               </div>
               <p className="text-slate-400 text-sm leading-relaxed mb-6">
-                Campus Safety &amp; Incident Reporting System — protecting our TVET community around the clock.
+                Campus Safety &amp; Incident Reporting System — protecting our
+                TVET community around the clock.
               </p>
               <div className="footer-badge">
                 <span className="footer-badge-dot" />
@@ -62,13 +62,20 @@ export default function Footer() {
               <ul className="space-y-3">
                 {emergencyContacts.map(({ label, number, tel }) => (
                   <li key={tel}>
-                    <a href={`tel:${tel}`} className="footer-emergency-link group">
+                    <a
+                      href={`tel:${tel}`}
+                      className="footer-emergency-link group"
+                    >
                       <span className="footer-emergency-icon">
                         <Phone className="w-3.5 h-3.5" />
                       </span>
                       <span>
-                        <span className="text-slate-400 text-xs block">{label}</span>
-                        <span className="text-white font-semibold text-sm tracking-wide">{number}</span>
+                        <span className="text-slate-400 text-xs block">
+                          {label}
+                        </span>
+                        <span className="text-white font-semibold text-sm tracking-wide">
+                          {number}
+                        </span>
                       </span>
                     </a>
                   </li>
@@ -81,12 +88,17 @@ export default function Footer() {
               <h4 className="footer-section-title">Safety Office</h4>
               <ul className="space-y-4">
                 <li>
-                  <a href="mailto:safety@tvetsafety.ac.ke" className="footer-office-item group">
+                  <a
+                    href="mailto:safety@tvetsafety.ac.ke"
+                    className="footer-office-item group"
+                  >
                     <span className="footer-office-icon">
                       <Mail className="w-3.5 h-3.5" />
                     </span>
                     <span>
-                      <span className="text-slate-400 text-xs block">Email</span>
+                      <span className="text-slate-400 text-xs block">
+                        Email
+                      </span>
                       <span className="text-amber-400 text-sm font-medium group-hover:text-amber-300 transition-colors">
                         safety@tvetsafety.ac.ke
                       </span>
@@ -99,8 +111,12 @@ export default function Footer() {
                       <Clock className="w-3.5 h-3.5" />
                     </span>
                     <span>
-                      <span className="text-slate-400 text-xs block">Working Hours</span>
-                      <span className="text-white text-sm font-medium">8:00 AM – 5:00 PM</span>
+                      <span className="text-slate-400 text-xs block">
+                        Working Hours
+                      </span>
+                      <span className="text-white text-sm font-medium">
+                        8:00 AM – 5:00 PM
+                      </span>
                     </span>
                   </div>
                 </li>
@@ -110,9 +126,12 @@ export default function Footer() {
 
           {/* ── Bottom bar ── */}
           <div className="footer-bottom">
-            <span>© {new Date().getFullYear()} CSIRS · TVET Institutions Campus Safety System</span>
+            <span>
+              © {new Date().getFullYear()} CSIRS · TVET Institutions Campus
+              Safety System
+            </span>
             <span className="footer-bottom-divider" />
-            <span>Built for student safety</span>
+            <span>Designed and Built by Robinson</span>
           </div>
         </div>
       </div>
