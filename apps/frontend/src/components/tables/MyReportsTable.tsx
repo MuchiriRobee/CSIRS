@@ -12,15 +12,16 @@ import { Skeleton } from '../ui/skeleton';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader,
-  AlertDialogTitle, AlertDialogTrigger,
+  AlertDialogTitle, AlertDialogTrigger, 
 } from '../ui/alert-dialog';
 import {
   Search, Trash2, Plus, ChevronUp, ChevronDown,
   ChevronsUpDown, ArrowLeft, ArrowRight, Filter,
-  FileText, ShieldAlert, X,
+  FileText, ShieldAlert, X, MessageSquare,
 } from 'lucide-react';
 import { useGetMyReportsQuery } from '../../api/incidentApi';
 import ReportIncidentDialog from '../forms/ReportIncidentDialog';
+import IncidentDetailDialog from '../forms/IncidentDetailDialog';
 import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -70,6 +71,7 @@ export default function MyReportsTable() {
   const [statusFilter,    setStatusFilter]    = useState('ALL');
   const [sorting,         setSorting]         = useState<SortingState>([{ id: 'createdAt', desc: true }]);
   const [showFilters,     setShowFilters]     = useState(false);
+  const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
 
   const { data: response, isLoading, refetch } = useGetMyReportsQuery(undefined);
 
@@ -142,7 +144,17 @@ export default function MyReportsTable() {
       id: 'actions',
       header: '',
       enableSorting: false,
-      cell: ({ row }) => (
+      cell: ({ row }) => {
+        const incident = row.original;
+        return (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setSelectedIncident(incident)}
+              className="mr-view-btn p-1.5 hover:bg-slate-100 rounded-md transition-colors"
+              title="View details & comments"
+            >
+              <MessageSquare className="w-3.5 h-3.5 text-slate-500" />
+            </button>
         <AlertDialog>
           <AlertDialogTrigger asChild>
             <button className="mr-delete-btn" title="Delete report" aria-label="Delete report">
@@ -170,7 +182,9 @@ export default function MyReportsTable() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-      ),
+        </div>
+        );
+      },
     },
   ], []);
 
@@ -419,6 +433,19 @@ export default function MyReportsTable() {
           </div>
         </div>
       </div>
+            {/* Incident Detail Dialog */}
+      <IncidentDetailDialog
+        incident={selectedIncident}
+        open={!!selectedIncident}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedIncident(null);
+          }
+        }}
+        onSuccess={() => {
+          // Optional: refresh table if needed
+        }}
+      />
     </div>
   );
 }
