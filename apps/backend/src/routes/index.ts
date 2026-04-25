@@ -61,6 +61,14 @@ router.post(
   IncidentController.addComment,
 );
 
+// Admin / Reporter: Get all comments for an incident
+router.get(
+  "/incidents/:id/comments",
+  authenticateJWT,
+  requireReporterOrAdmin,
+  IncidentController.getComments,
+);
+
 // ==================== NEW USER MANAGEMENT ROUTES (Admin Only) ====================
 router.get("/users", authenticateJWT, requireAdmin, UserController.getAllUsers);
 router.patch(

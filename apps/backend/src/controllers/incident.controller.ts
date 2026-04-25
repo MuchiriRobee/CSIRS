@@ -151,4 +151,28 @@ export class IncidentController {
          res.status(400).json(response);
        }
      }
+
+       /**
+   * Get all comments for a specific incident (Admin or Reporter who can access it)
+   */
+  static async getComments(req: Request, res: Response) {
+    try {
+      const id = String(req.params.id);
+      if (!id) {
+        return res.status(400).json({ success: false, message: 'Incident ID is required' } as ApiError);
+      }
+
+      const comments = await IncidentService.getIncidentComments(id);
+
+      const response: ApiSuccess = {
+        success: true,
+        message: 'Incident comments retrieved successfully',
+        data: comments,
+      };
+      res.status(200).json(response);
+    } catch (error: any) {
+      const response: ApiError = { success: false, message: error.message };
+      res.status(400).json(response);
+    }
+  }
 }
