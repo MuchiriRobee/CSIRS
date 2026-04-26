@@ -1,17 +1,19 @@
 import { useState } from 'react';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
+  Dialog, DialogContent, DialogHeader,
+  DialogTitle, DialogDescription,
 } from '../ui/dialog';
-import { Button } from '../ui/button';
-import { Input } from '../ui/input';
-import { Send, MessageSquare, MapPin, ShieldAlert, User } from 'lucide-react';
+import {
+  Send, MessageSquare, MapPin, ShieldAlert,
+  User, Calendar, Tag, FileText, Clock,
+} from 'lucide-react';
 import { format } from 'date-fns';
 import { useGetIncidentCommentsQuery, useAddCommentMutation } from '../../api/incidentApi';
-import { useAuth } from '../../providers/AuthProvider';   // ← NEW
+import { useAuth } from '../../providers/AuthProvider';
+import { toast } from 'sonner';
+import { motion, AnimatePresence } from 'framer-motion';
+
+/* ── Types ──────────────────────────────────────────────── */
 type Incident = {
   id: string;
   category: string;
@@ -19,177 +21,257 @@ type Incident = {
   description: string;
   status: string;
   createdAt: string;
-  reporter?: { name: string; email: string; phone?: string };
+  reporter?: { name: string; email: string; phone?: string } | null;
+  isAnonymous?: boolean;
+  reporterId?: string | null;
 };
 
-interface IncidentDetailDialogProps {
+interface Props {
   incident: Incident | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess?: () => void;
 }
 
-export default function IncidentDetailDialog({
-  incident,
-  open,
-  onOpenChange,
-  onSuccess,
-}: IncidentDetailDialogProps) {
+/* ── Status config ──────────────────────────────────────── */
+const STATUS_CFG: Record<string, { label: string; cls: string }> = {
+  PENDING:     { label: 'Pending',     cls: 'idd-status idd-status--amber' },
+  IN_PROGRESS: { label: 'In Progress', cls: 'idd-status idd-status--blue'  },
+  RESOLVED:    { label: 'Resolved',    cls: 'idd-status idd-status--green' },
+  CLOSED:      { label: 'Closed',      cls: 'idd-status idd-status--slate' },
+};
+
+/* ── Detail row helper ──────────────────────────────────── */
+function DetailItem({ icon: Icon, label, children }: {
+  icon: any; label: string; children: React.ReactNode;
+}) {
+  return (
+    <div className="idd-detail-item">
+      <div className="idd-detail-label">
+        <Icon className="w-3.5 h-3.5" />
+        {label}
+      </div>
+      <div className="idd-detail-value">{children}</div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   MAIN
+═══════════════════════════════════════════════════════════ */
+export default function IncidentDetailDialog({ incident, open, onOpenChange, onSuccess }: Props) {
   const [newComment, setNewComment] = useState('');
+  const { user } = useAuth();
+
   const [addComment, { isLoading: isAdding }] = useAddCommentMutation();
-  
-  const { data: commentsResponse } = useGetIncidentCommentsQuery(
+  const { data: commentsResponse, isLoading: commentsLoading } = useGetIncidentCommentsQuery(
     incident?.id || '',
-    { skip: !incident?.id }
+    { skip: !incident?.id || !open }
   );
 
-  const comments = commentsResponse?.data || [];
-
-const { user } = useAuth();
+  // Backend returns newest first (orderBy: createdAt desc)
+  const comments: any[] = commentsResponse?.data || [];
 
   const handleAddComment = async () => {
     if (!incident || !newComment.trim()) return;
-
     try {
-      await addComment({
-        incidentId: incident.id,
-        content: newComment.trim(),
-      }).unwrap();
-
+      await addComment({ incidentId: incident.id, content: newComment.trim() }).unwrap();
       setNewComment('');
-      onSuccess?.(); // Optional callback
-    } catch (err) {
-      console.error('Failed to add comment:', err);
+      toast.success('Comment added');
+      onSuccess?.();
+    } catch {
+      toast.error('Failed to add comment');
     }
   };
 
   if (!incident) return null;
 
+  const statusCfg = STATUS_CFG[incident.status] ?? { label: incident.status, cls: 'idd-status idd-status--slate' };
+  const isAnon = !incident.reporterId;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col mr-dialog">
-        <DialogHeader className="border-b pb-4">
-          <div className="flex items-center gap-3">
-            <ShieldAlert className="w-6 h-6 text-amber-500" />
-            <DialogTitle className="mr-dialog-title text-xl">
-              Incident #{incident.id.slice(-8)}
-            </DialogTitle>
-          </div>
-          <DialogDescription className="mr-dialog-desc">
-            Reported on {format(new Date(incident.createdAt), 'dd MMMM yyyy • HH:mm')}
-          </DialogDescription>
+      <DialogContent className="idd-dialog">
+        {/* Hidden a11y title for screen readers */}
+        <DialogHeader className="sr-only">
+          <DialogTitle>Incident Details</DialogTitle>
+          <DialogDescription>Full incident report and comments</DialogDescription>
         </DialogHeader>
 
-        {/* Incident Details */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* ── Custom header ── */}
+        <div className="idd-header">
+          <div className="idd-header-left">
+            <div className="idd-header-icon">
+              <ShieldAlert className="w-4 h-4 text-white" strokeWidth={2.5} />
+            </div>
             <div>
-              <div className="flex items-center gap-2 mb-1">
-                <ShieldAlert className="w-4 h-4 text-slate-400" />
-                <span className="mr-info-label">Category</span>
-              </div>
-              <p className="mr-info-value font-medium">
-                {incident.category.replace(/_/g, ' ')}
+              <h2 className="idd-title">Incident Report</h2>
+              <p className="idd-subtitle">
+                <Calendar className="w-3 h-3" />
+                {format(new Date(incident.createdAt), 'dd MMMM yyyy • HH:mm')}
               </p>
             </div>
-
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <MapPin className="w-4 h-4 text-slate-400" />
-                <span className="mr-info-label">Location</span>
-              </div>
-              <p className="mr-info-value">{incident.location}</p>
-            </div>
           </div>
 
-          <div>
-            <span className="mr-info-label">Description</span>
-            <p className="mr-info-value whitespace-pre-wrap mt-1 leading-relaxed">
-              {incident.description}
-            </p>
-          </div>
-
-          <div>
-            <span className="mr-info-label">Status</span>
-            <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium mt-1 ${
-              incident.status === 'RESOLVED' ? 'bg-green-100 text-green-700' :
-              incident.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-700' :
-              'bg-amber-100 text-amber-700'
-            }`}>
-              {incident.status}
-            </span>
+          <div className="idd-header-right">
+            <span className={statusCfg.cls}>{statusCfg.label}</span>
+          
           </div>
         </div>
 
-        {/* Comments Section */}
-        <div className="border-t p-6 flex flex-col flex-1 min-h-0">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold flex items-center gap-2">
-              <MessageSquare className="w-5 h-5" />
-              Comments ({comments.length})
-            </h3>
+        {/* ── Scrollable body ── */}
+        <div className="idd-body">
+
+          {/* ── Incident details grid ── */}
+          <div className="idd-details-section">
+            <p className="idd-section-label">Incident Details</p>
+
+            <div className="idd-details-grid">
+              <DetailItem icon={Tag} label="Category">
+                <span className="idd-category-text">
+                  {incident.category.replace(/_/g, ' ')}
+                </span>
+              </DetailItem>
+
+              <DetailItem icon={MapPin} label="Location">
+                {incident.location}
+              </DetailItem>
+
+              <DetailItem icon={User} label="Reporter">
+                {isAnon ? (
+                  <span className="idd-anon-label">Anonymous</span>
+                ) : (
+                  <div className="idd-reporter-wrap">
+                    <div className="idd-reporter-avatar">
+                      {incident.reporter?.name?.[0]?.toUpperCase() ?? '?'}
+                    </div>
+                    <div>
+                      <p className="idd-reporter-name">{incident.reporter?.name ?? '—'}</p>
+                      {incident.reporter?.email && (
+                        <p className="idd-reporter-email">{incident.reporter.email}</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </DetailItem>
+
+              <DetailItem icon={Clock} label="Reported On">
+                {format(new Date(incident.createdAt), 'dd MMM yyyy, HH:mm')}
+              </DetailItem>
+            </div>
+
+            <DetailItem icon={FileText} label="Description">
+              <p className="idd-description">{incident.description}</p>
+            </DetailItem>
           </div>
 
-          {/* Scrollable Comments Table */}
-          <div className="flex-1 overflow-y-auto border rounded-lg bg-slate-50 mb-4">
-            {comments.length > 0 ? (
-              <table className="w-full">
-                <thead className="sticky top-0 bg-slate-100 border-b">
-                  <tr>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-slate-500">Author</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-slate-500">Comment</th>
-                    <th className="px-4 py-2 text-right text-xs font-medium text-slate-500">Time</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {comments.map((comment: any) => (
-                    <tr key={comment.id} className="hover:bg-white">
-                      <td className="px-4 py-3 text-sm font-medium">
-                        {comment.author?.name || 'Unknown'}
-                      </td>
-                      <td className="px-4 py-3 text-sm">{comment.content}</td>
-                      <td className="px-4 py-3 text-xs text-slate-500 text-right whitespace-nowrap">
-                        {format(new Date(comment.createdAt), 'dd MMM HH:mm')}
-                      </td>
-                    </tr>
+          {/* ── Comments section ── */}
+          <div className="idd-comments-section">
+
+            {/* Section header */}
+            <div className="idd-comments-header">
+              <div className="idd-comments-title-row">
+                <MessageSquare className="w-4 h-4 text-amber-500" />
+                <span className="idd-comments-title">Comments</span>
+                <span className="idd-comment-count">{comments.length}</span>
+              </div>
+              <p className="idd-comments-sub">Newest first · visible to all parties</p>
+            </div>
+
+            {/* Comments list */}
+            <div className="idd-comments-list">
+              {commentsLoading ? (
+                <div className="idd-comments-loading">
+                  {[...Array(3)].map((_, i) => (
+                    <div key={i} className="idd-comment-skeleton" />
                   ))}
-                </tbody>
-              </table>
-            ) : (
-              <div className="flex flex-col items-center justify-center h-40 text-slate-400">
-                <MessageSquare className="w-10 h-10 mb-2 opacity-40" />
-                <p>No comments yet. Be the first to comment.</p>
+                </div>
+              ) : comments.length > 0 ? (
+                <AnimatePresence initial={false}>
+                  {comments.map((comment: any, i: number) => {
+                    const isCurrentUser = comment.author?.id === user?.id;
+                    const isAdmin = comment.author?.role === 'ADMIN';
+                    return (
+                      <motion.div
+                        key={comment.id}
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: i * 0.04, duration: 0.28 }}
+                        className={`idd-comment ${isCurrentUser ? 'idd-comment--mine' : ''}`}
+                      >
+                        <div className={`idd-comment-avatar ${isAdmin ? 'idd-comment-avatar--admin' : ''}`}>
+                          {comment.author?.name?.[0]?.toUpperCase() ?? '?'}
+                        </div>
+                        <div className="idd-comment-body">
+                          <div className="idd-comment-meta">
+                            <span className="idd-comment-author">
+                              {comment.author?.name ?? 'Unknown'}
+                              {isCurrentUser && <span className="idd-comment-you">you</span>}
+                              {isAdmin && !isCurrentUser && (
+                                <span className="idd-comment-admin-tag">Admin</span>
+                              )}
+                            </span>
+                            <span className="idd-comment-time">
+                              {format(new Date(comment.createdAt), 'dd MMM · HH:mm')}
+                            </span>
+                          </div>
+                          <p className="idd-comment-text">{comment.content}</p>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </AnimatePresence>
+              ) : (
+                <div className="idd-comments-empty">
+                  <MessageSquare className="w-8 h-8 text-slate-200" />
+                  <p className="idd-empty-title">No comments yet</p>
+                  <p className="idd-empty-sub">Be the first to add a note on this incident.</p>
+                </div>
+              )}
+            </div>
+
+            {/* Add comment */}
+            {user && (
+              <div className="idd-add-comment">
+                <div className="idd-commenter-row">
+                  <div className="idd-commenter-avatar">
+                    {user.name?.[0]?.toUpperCase() ?? 'U'}
+                  </div>
+                  <span className="idd-commenter-label">
+                    Commenting as <strong>{user.name}</strong>
+                  </span>
+                </div>
+                <div className="idd-input-row">
+                  <div className="idd-input-wrap">
+                    <textarea
+                      value={newComment}
+                      onChange={e => setNewComment(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          handleAddComment();
+                        }
+                      }}
+                      placeholder="Write a comment… (Enter to send, Shift+Enter for new line)"
+                      className="idd-textarea"
+                      rows={2}
+                      disabled={isAdding}
+                    />
+                  </div>
+                  <button
+                    onClick={handleAddComment}
+                    disabled={!newComment.trim() || isAdding}
+                    className="idd-send-btn"
+                    aria-label="Send comment"
+                  >
+                    {isAdding
+                      ? <span className="idd-send-spinner" />
+                      : <Send className="w-4 h-4" />
+                    }
+                  </button>
+                </div>
               </div>
             )}
-          </div>
-
-         {/* Current User Info */}
-          {user && (
-            <div className="mb-3 px-1 flex items-center gap-2 text-xs text-slate-500">
-              <div className="w-5 h-5 rounded-full bg-slate-200 flex items-center justify-center">
-                <User className="w-3 h-3" />   {/* Add User icon import if needed */}
-              </div>
-              <span>Commenting as <strong>{user.name}</strong></span>
-            </div>
-          )}
-
-          {/* Add Comment Input */}
-          <div className="flex gap-2">
-            <Input
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              placeholder="Write a comment..."
-              className="mr-comment-input flex-1"
-              onKeyDown={(e) => e.key === 'Enter' && handleAddComment()}
-              disabled={isAdding}
-            />
-            <Button
-              onClick={handleAddComment}
-              disabled={!newComment.trim() || isAdding}
-              className="mr-comment-send-btn px-6"
-            >
-              {isAdding ? 'Sending...' : <Send className="w-4 h-4" />}
-            </Button>
           </div>
         </div>
       </DialogContent>
