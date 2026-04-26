@@ -22,6 +22,7 @@ import { useGetAllIncidentsQuery, useUpdateIncidentStatusMutation } from '../../
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
+import IncidentDetailDialog from '../forms/IncidentDetailDialog';
 
 /* ── Types ──────────────────────────────────────────────── */
 type Incident = {
@@ -32,7 +33,7 @@ type Incident = {
   status: 'PENDING' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
   isAnonymous?: boolean;
   createdAt: string;
-  reporter?: { name: string; phone?: string | null } | null;
+  reporter?: { name: string; email: string; phone?: string } | null;
   reporterId?: string | null;
 };
 
@@ -40,29 +41,29 @@ type Incident = {
 const STATUS_OPTIONS = ['PENDING', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'] as const;
 
 const STATUS_CFG: Record<string, { label: string; cls: string; selectCls: string }> = {
-  PENDING:     { label: 'Pending',     cls: 'ai-badge ai-badge--amber', selectCls: 'ai-status-opt--amber' },
-  IN_PROGRESS: { label: 'In Progress', cls: 'ai-badge ai-badge--blue',  selectCls: 'ai-status-opt--blue'  },
-  RESOLVED:    { label: 'Resolved',    cls: 'ai-badge ai-badge--green', selectCls: 'ai-status-opt--green' },
-  CLOSED:      { label: 'Closed',      cls: 'ai-badge ai-badge--slate', selectCls: 'ai-status-opt--slate' },
+  PENDING: { label: 'Pending', cls: 'ai-badge ai-badge--amber', selectCls: 'ai-status-opt--amber' },
+  IN_PROGRESS: { label: 'In Progress', cls: 'ai-badge ai-badge--blue', selectCls: 'ai-status-opt--blue' },
+  RESOLVED: { label: 'Resolved', cls: 'ai-badge ai-badge--green', selectCls: 'ai-status-opt--green' },
+  CLOSED: { label: 'Closed', cls: 'ai-badge ai-badge--slate', selectCls: 'ai-status-opt--slate' },
 };
 
 const CATEGORIES = [
-  { value: 'ALL',                  label: 'All Categories' },
-  { value: 'THEFT',                label: 'Theft' },
-  { value: 'PHYSICAL_ASSAULT',     label: 'Physical Assault' },
-  { value: 'SEXUAL_HARASSMENT',    label: 'Sexual Harassment' },
-  { value: 'FIRE_OUTBREAK',        label: 'Fire Outbreak' },
-  { value: 'MEDICAL_EMERGENCY',    label: 'Medical Emergency' },
-  { value: 'PROPERTY_DAMAGE',      label: 'Property Damage' },
-  { value: 'CYBER_BULLYING',       label: 'Cyberbullying' },
+  { value: 'ALL', label: 'All Categories' },
+  { value: 'THEFT', label: 'Theft' },
+  { value: 'PHYSICAL_ASSAULT', label: 'Physical Assault' },
+  { value: 'SEXUAL_HARASSMENT', label: 'Sexual Harassment' },
+  { value: 'FIRE_OUTBREAK', label: 'Fire Outbreak' },
+  { value: 'MEDICAL_EMERGENCY', label: 'Medical Emergency' },
+  { value: 'PROPERTY_DAMAGE', label: 'Property Damage' },
+  { value: 'CYBER_BULLYING', label: 'Cyberbullying' },
   { value: 'INFRASTRUCTURE_ISSUE', label: 'Infrastructure Issue' },
-  { value: 'OTHER',                label: 'Other' },
+  { value: 'OTHER', label: 'Other' },
 ];
 
 /* ── Sort icon ──────────────────────────────────────────── */
 function SortIcon({ sorted }: { sorted: false | 'asc' | 'desc' }) {
-  if (sorted === 'asc')  return <ChevronUp   className="w-3.5 h-3.5 text-amber-500" />;
-  if (sorted === 'desc') return <ChevronDown  className="w-3.5 h-3.5 text-amber-500" />;
+  if (sorted === 'asc') return <ChevronUp className="w-3.5 h-3.5 text-amber-500" />;
+  if (sorted === 'desc') return <ChevronDown className="w-3.5 h-3.5 text-amber-500" />;
   return <ChevronsUpDown className="w-3.5 h-3.5 text-slate-300" />;
 }
 
@@ -99,7 +100,7 @@ function StatusCell({
     >
       <SelectTrigger className="ai-status-trigger">
         <SelectValue>
-        <span className={cfg.cls}>{cfg.label}</span>
+          <span className={cfg.cls}>{cfg.label}</span>
         </SelectValue>
       </SelectTrigger>
       <SelectContent className="ai-status-dropdown">
@@ -121,9 +122,9 @@ const reporterAwareFilter: FilterFn<Incident> = (row, _colId, filterValue: strin
   const q = filterValue.toLowerCase();
   const { category, location, description, reporter } = row.original;
   return (
-    category.toLowerCase().includes(q)   ||
-    location.toLowerCase().includes(q)   ||
-    description.toLowerCase().includes(q)||
+    category.toLowerCase().includes(q) ||
+    location.toLowerCase().includes(q) ||
+    description.toLowerCase().includes(q) ||
     (reporter?.name ?? '').toLowerCase().includes(q)
   );
 };
@@ -132,11 +133,12 @@ const reporterAwareFilter: FilterFn<Incident> = (row, _colId, filterValue: strin
    MAIN COMPONENT
 ═══════════════════════════════════════════════════════════ */
 export default function AllIncidentsTable() {
-  const [globalFilter,   setGlobalFilter]   = useState('');
-  const [statusFilter,   setStatusFilter]   = useState('ALL');
+  const [globalFilter, setGlobalFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ALL');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
-  const [sorting,        setSorting]        = useState<SortingState>([{ id: 'createdAt', desc: true }]);
-  const [showFilters,    setShowFilters]    = useState(false);
+  const [sorting, setSorting] = useState<SortingState>([{ id: 'createdAt', desc: true }]);
+  const [showFilters, setShowFilters] = useState(false);
+  const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
 
   const { data: response, isLoading, refetch } = useGetAllIncidentsQuery({ page: 1, limit: 100 });
   const incidents: Incident[] = useMemo(
@@ -191,8 +193,8 @@ export default function AllIncidentsTable() {
         return na.localeCompare(nb);
       },
       cell: ({ row }) => {
-        const reporter   = row.original.reporter;
-        const isAnon     = !row.original.reporterId;
+        const reporter = row.original.reporter;
+        const isAnon = !row.original.reporterId;
         return (
           <div className="ai-td-reporter">
             <div className={`ai-reporter-avatar ${isAnon ? 'ai-reporter-avatar--anon' : ''}`}>
@@ -243,7 +245,7 @@ export default function AllIncidentsTable() {
   /* ── Filtered data ── */
   const filteredData = useMemo(() => {
     let r = incidents;
-    if (statusFilter   !== 'ALL') r = r.filter(i => i.status   === statusFilter);
+    if (statusFilter !== 'ALL') r = r.filter(i => i.status === statusFilter);
     if (categoryFilter !== 'ALL') r = r.filter(i => i.category === categoryFilter);
     return r;
   }, [incidents, statusFilter, categoryFilter]);
@@ -254,20 +256,20 @@ export default function AllIncidentsTable() {
     columns,
     filterFns: { reporterAwareFilter },
     globalFilterFn: reporterAwareFilter,
-    getCoreRowModel:       getCoreRowModel(),
+    getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
-    getFilteredRowModel:   getFilteredRowModel(),
-    getSortedRowModel:     getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getSortedRowModel: getSortedRowModel(),
     state: { globalFilter, sorting },
     onGlobalFilterChange: setGlobalFilter,
-    onSortingChange:      setSorting,
+    onSortingChange: setSorting,
     initialState: { pagination: { pageSize: 10 } },
   });
 
   const { pageIndex, pageSize } = table.getState().pagination;
   const total = filteredData.length;
-  const from  = pageIndex * pageSize + 1;
-  const to    = Math.min((pageIndex + 1) * pageSize, total);
+  const from = pageIndex * pageSize + 1;
+  const to = Math.min((pageIndex + 1) * pageSize, total);
 
   const hasFilters = statusFilter !== 'ALL' || categoryFilter !== 'ALL' || !!globalFilter;
   const clearFilters = () => { setStatusFilter('ALL'); setCategoryFilter('ALL'); setGlobalFilter(''); };
@@ -363,7 +365,7 @@ export default function AllIncidentsTable() {
                 >
                   {sorting[0]?.id === 'createdAt' && sorting[0]?.desc
                     ? <><ChevronDown className="w-3.5 h-3.5 text-amber-500" /> Newest first</>
-                    : <><ChevronUp   className="w-3.5 h-3.5 text-amber-500" /> Oldest first</>
+                    : <><ChevronUp className="w-3.5 h-3.5 text-amber-500" /> Oldest first</>
                   }
                 </button>
               </div>
@@ -433,10 +435,11 @@ export default function AllIncidentsTable() {
                       initial={{ opacity: 0, y: 5 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: i * 0.03, duration: 0.28 }}
-                      className="ai-tr"
+                      className="ai-tr ai-tr--clickable"
+                      onClick={() => setSelectedIncident(row.original)}
                     >
                       {row.getVisibleCells().map(cell => (
-                        <td key={cell.id} className="ai-td">
+                        <td key={cell.id} className="ai-td" onClick={cell.column.id === 'status' ? (e) => e.stopPropagation() : undefined}>
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
                         </td>
                       ))}
@@ -492,6 +495,12 @@ export default function AllIncidentsTable() {
           </div>
         </div>
       </div>
+      <IncidentDetailDialog
+        incident={selectedIncident}
+        open={!!selectedIncident}
+        onOpenChange={(open) => { if (!open) setSelectedIncident(null); }}
+        onSuccess={refetch}
+      />
     </div>
   );
 }
