@@ -47,6 +47,15 @@ export const incidentApi = createApi({
       invalidatesTags: ["Incidents"],
     }),
 
+        // NEW: Get full incident with attachments and comments
+    getIncidentDetails: builder.query({
+      query: (incidentId: string) => `/incidents/${incidentId}`,
+      providesTags: (incidentId) => [
+        { type: "IncidentComments", id: incidentId },
+        "Incidents",
+      ],
+    }),
+
     getIncidentComments: builder.query({
   query: (incidentId: string) => `/incidents/${incidentId}/comments`,
   providesTags: (incidentId) => [
@@ -74,4 +83,5 @@ export const {
   useUpdateIncidentStatusMutation,
   useGetIncidentCommentsQuery,
   useAddCommentMutation,
+  useGetIncidentDetailsQuery,
 } = incidentApi;
