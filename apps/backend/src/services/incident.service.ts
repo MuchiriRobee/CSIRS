@@ -115,4 +115,15 @@ static async getMyReports(reporterId: string, query: any) {
 
     return incidentRepository.getCommentsByIncidentId(incidentId);
   }
+
+    /**
+   * Get full incident details with attachments and comments
+   */
+  static async getIncidentDetails(incidentId: string) {
+    if (!incidentId) {
+      throw new Error('Incident ID is required');
+    }
+
+    return incidentRepository.getIncidentById(incidentId);
+  }
 }

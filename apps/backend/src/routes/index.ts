@@ -37,6 +37,14 @@ router.get(
   IncidentController.getAll,
 );
 
+// Get full incident details (with attachments + comments)
+router.get(
+  "/incidents/:id",
+  authenticateJWT,
+  requireReporterOrAdmin,
+  IncidentController.getIncidentDetails,
+);
+
 // Reporter (or Admin): View own reports
 router.get(
   "/my-reports",

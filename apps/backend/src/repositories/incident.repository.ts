@@ -155,6 +155,36 @@ class IncidentRepository extends BaseRepository<any> {
       },
     });
   }
+
+    /**
+   * Fetch full incident details including attachments and comments
+   * Used by the frontend IncidentDetailDialog
+   */
+  async getIncidentById(incidentId: string) {
+    return this.model.findUnique({
+      where: { id: incidentId },
+      include: {
+        reporter: { 
+          select: { name: true, email: true, phone: true, role: true } 
+        },
+        attachments: true,           // ← Attachments included
+        comments: {
+          orderBy: { createdAt: "desc" },
+          include: {
+            author: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                phone: true,
+                role: true,
+              },
+            },
+          },
+        },
+      },
+    });
+  }
 }
 
 export const incidentRepository = new IncidentRepository();

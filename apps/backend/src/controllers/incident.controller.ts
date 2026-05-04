@@ -175,4 +175,33 @@ export class IncidentController {
       res.status(400).json(response);
     }
   }
+
+    /**
+   * Get full incident details including attachments and comments
+   * Used by IncidentDetailDialog
+   */
+  static async getIncidentDetails(req: Request, res: Response) {
+    try {
+      const id = String(req.params.id);
+      if (!id) {
+        return res.status(400).json({ success: false, message: 'Incident ID is required' } as ApiError);
+      }
+
+      const incident = await IncidentService.getIncidentDetails(id);
+
+      if (!incident) {
+        return res.status(404).json({ success: false, message: 'Incident not found' } as ApiError);
+      }
+
+      const response: ApiSuccess = {
+        success: true,
+        message: 'Incident details retrieved successfully',
+        data: incident,
+      };
+      res.status(200).json(response);
+    } catch (error: any) {
+      const response: ApiError = { success: false, message: error.message };
+      res.status(400).json(response);
+    }
+  }
 }
