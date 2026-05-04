@@ -145,7 +145,7 @@ export default function AllIncidentsTable() {
     () => response?.data?.data || response?.data || [],
     [response],
   );
-  console.log("Fetched incidents:", incidents); // Debug log to verify data structure
+  /*console.log("Fetched incidents:", incidents); // Debug log to verify data structure */
   const [updateStatus, { isLoading: isUpdating }] = useUpdateIncidentStatusMutation();
 
   const handleStatusChange = async (id: string, newStatus: string) => {
