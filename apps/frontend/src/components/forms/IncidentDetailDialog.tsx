@@ -5,10 +5,10 @@ import {
 } from '../ui/dialog';
 import {
   Send, MessageSquare, MapPin, ShieldAlert,
-  User, Calendar, Tag, FileText, Clock,
+  User, Calendar, Tag, FileText, Clock, FileImage,
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { useGetIncidentCommentsQuery, useAddCommentMutation } from '../../api/incidentApi';
+import { useAddCommentMutation, useGetIncidentDetailsQuery } from '../../api/incidentApi';
 import { useAuth } from '../../providers/AuthProvider';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -64,13 +64,15 @@ export default function IncidentDetailDialog({ incident, open, onOpenChange, onS
   const { user } = useAuth();
 
   const [addComment, { isLoading: isAdding }] = useAddCommentMutation();
-  const { data: commentsResponse, isLoading: commentsLoading } = useGetIncidentCommentsQuery(
+  const { data: incidentResponse, isLoading: commentsLoading } = useGetIncidentDetailsQuery(
     incident?.id || '',
     { skip: !incident?.id || !open }
   );
 
   // Backend returns newest first (orderBy: createdAt desc)
-  const comments: any[] = commentsResponse?.data || [];
+ const fullIncident = incidentResponse?.data;
+const comments = fullIncident?.comments || [];
+const attachments = fullIncident?.attachments || [];
 
   const handleAddComment = async () => {
     if (!incident || !newComment.trim()) return;
@@ -164,6 +166,57 @@ export default function IncidentDetailDialog({ incident, open, onOpenChange, onS
               <p className="idd-description">{incident.description}</p>
             </DetailItem>
           </div>
+
+{/* Attachments Section */}
+{attachments.length > 0 && (
+  <div className="idd-details-section">
+    <p className="idd-section-label">Attachments ({attachments.length})</p>
+    <div className="idd-attachments-grid">
+      {attachments.map((att: any) => {
+        const isImage = att.mimeType?.startsWith('image/');
+        const fileUrl = `${import.meta.env.VITE_API_URL?.replace('/api', '')}/${att.filePath}`;
+        return (
+          <a
+            key={att.id}
+            href={fileUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="idd-attachment-card"
+            title={`Open ${att.fileName}`}
+          >
+            {isImage ? (
+              <div className="idd-attachment-preview">
+                <img
+                  src={fileUrl}
+                  alt={att.fileName}
+                  className="idd-attachment-img"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = 'none';
+                    (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
+                  }}
+                />
+                <div className="idd-attachment-fallback hidden">
+                  <FileImage className="w-8 h-8 text-slate-300" />
+                </div>
+              </div>
+            ) : (
+              <div className="idd-attachment-preview idd-attachment-preview--file">
+                <FileImage className="w-8 h-8 text-slate-400" />
+              </div>
+            )}
+            <div className="idd-attachment-info">
+              <p className="idd-attachment-name">{att.fileName}</p>
+              <p className="idd-attachment-meta">
+                {att.mimeType?.split('/')[1]?.toUpperCase() ?? 'FILE'}
+                {att.size ? ` · ${(att.size / (1024 * 1024)).toFixed(2)} MB` : ''}
+              </p>
+            </div>
+          </a>
+        );
+      })}
+    </div>
+  </div>
+)}
 
           {/* ── Comments section ── */}
           <div className="idd-comments-section">
