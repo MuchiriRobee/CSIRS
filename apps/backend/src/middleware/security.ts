@@ -5,6 +5,7 @@ import env from "../config/index.js";
 
 export const securityMiddleware = [
   helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' }, // allow images to load cross-origin
     contentSecurityPolicy: { directives: { defaultSrc: ["'self'"] } },
     crossOriginEmbedderPolicy: false, // allow modern browsers
   }),

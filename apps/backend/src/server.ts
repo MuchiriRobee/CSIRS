@@ -2,8 +2,8 @@
 import express from "express";
 import cors from "cors";
 import env from "./config/index.js";
-// import { isDev } from './config/index.js';
-
+import { fileURLToPath } from 'url';
+import path from 'path';
 import prisma from "./config/prisma.js";
 import router from "./routes/index.js";
 import {
@@ -15,6 +15,9 @@ import {
 } from "./middleware/index.js";
 
 const app = express();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const allowedOrigins = [
   process.env.FRONTEND_URL, // Production URL from Render env
@@ -37,6 +40,12 @@ app.use(
     allowedHeaders: ["Content-Type", "Authorization"],
   }),
 );
+app.use('/uploads', (req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  next();
+}, express.static(path.join(__dirname, '../uploads')));
+
 // ======================
 // MIDDLEWARE (order matters!)
 // ======================
@@ -45,7 +54,6 @@ app.use(globalRateLimiter); // Global rate limit
 app.use(httpLogger); // Request logging
 app.use(express.json({ limit: "10mb" })); // JSON body parser
 app.use(express.urlencoded({ extended: true }));
-
 // ======================
 // ROUTES
 // ======================
