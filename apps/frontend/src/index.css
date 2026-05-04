@@ -6430,3 +6430,88 @@ main.flex-1 {
 .ai-tr--clickable:hover {
   background: #fffbeb;       /* consistent amber tint across both tables */
 }
+
+/* Attachments grid inside IncidentDetailDialog */
+.idd-attachments-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px;
+}
+
+.idd-attachment-card {
+  display: flex;
+  flex-direction: column;
+  border: 1.5px solid #eef1f6;
+  border-radius: 12px;
+  overflow: hidden;
+  background: white;
+  text-decoration: none;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+  cursor: pointer;
+}
+
+.idd-attachment-card:hover {
+  border-color: #f59e0b;
+  box-shadow: 0 4px 14px rgba(245,158,11,0.15);
+  transform: translateY(-2px);
+}
+
+.idd-attachment-preview {
+  width: 100%;
+  aspect-ratio: 16/9;
+  background: #f8f9fb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+}
+
+.idd-attachment-preview--file {
+  background: #f1f5f9;
+}
+
+.idd-attachment-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.3s ease;
+}
+
+.idd-attachment-card:hover .idd-attachment-img {
+  transform: scale(1.04);
+}
+
+.idd-attachment-fallback {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f1f5f9;
+}
+
+.idd-attachment-info {
+  padding: 8px 10px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.idd-attachment-name {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: #334155;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin: 0 0 2px;
+}
+
+.idd-attachment-meta {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 10.5px;
+  color: #94a3b8;
+  font-weight: 400;
+  margin: 0;
+}
