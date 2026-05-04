@@ -86,6 +86,7 @@ model IncidentAttachment {
   filePath   String // relative path or URL (local for MVP, Cloudinary later)
   mimeType   String
   size       Int?
+  publicId   String?
   uploadedAt DateTime @default(now()) @db.Timestamptz
 
   incidentId String

@@ -16,6 +16,9 @@ const envSchema = z.object({
   MAILERSEND_FROM_EMAIL: z.string().email('MAILERSEND_FROM_EMAIL must be a valid email'),
   MAILERSEND_FROM_NAME: z.string().default('CSIRS Campus Safety'),
   FRONTEND_URL: z.string().url().default('http://localhost:5173'),
+  CLOUDINARY_CLOUD_NAME: z.string().min(1, 'CLOUDINARY_CLOUD_NAME is required for image uploads'),
+  CLOUDINARY_API_KEY: z.string().min(1, 'CLOUDINARY_API_KEY is required for image uploads'),
+  CLOUDINARY_API_SECRET: z.string().min(1, 'CLOUDINARY_API_SECRET is required for image uploads'),
 });
 
 const env = envSchema.parse(process.env);

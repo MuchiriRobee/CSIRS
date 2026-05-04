@@ -3,6 +3,7 @@ import { Request, Response } from 'express';
 import { IncidentService } from '../services/incident.service.js'
 import { AuditLogService } from '../services/audit-log.service.js';
 import { upload } from '../config/multer.js';
+import { cloudinary } from '../config/cloudinary.js';
 import { ApiSuccess, ApiError, JwtPayload } from '@csirs/shared/types';
 import jwt from 'jsonwebtoken';
 import env from '../config/index.js';
@@ -11,7 +12,7 @@ import env from '../config/index.js';
 export class IncidentController {
      /**
       * Create incident (anonymous OR logged-in) with optional attachments
-      * Supports both cases on the same endpoint
+      * Now uploads files to Cloudinary
       */
      static create = [
        upload.array('attachment', 5),
@@ -19,7 +20,6 @@ export class IncidentController {
          try {
            let reporterId: string | undefined;
 
-           // Try to authenticate if token is provided (but don't fail if missing)
            const authHeader = req.headers.authorization;
            if (authHeader?.startsWith('Bearer ')) {
              try {
@@ -27,26 +27,37 @@ export class IncidentController {
                const payload = jwt.verify(token, env.JWT_SECRET) as JwtPayload;
                reporterId = payload.userId;
              } catch (_err) {
-               // Invalid token → treat as anonymous (don't throw error)
                reporterId = undefined;
              }
            }
 
            const files = (req.files as Express.Multer.File[]) || [];
-           
-
-           const attachments = files.map((file) => ({
-             fileName: file.originalname,
-             filePath: file.path,
-             mimeType: file.mimetype,
-             size: file.size,
-           }));
-
            const isAnonymous = req.body.isAnonymous === 'true' || req.body.isAnonymous === true;
+
+           // Upload files to Cloudinary
+           const attachments = await Promise.all(
+             files.map(async (file) => {
+               const result = await cloudinary.uploader.upload(
+                 `data:${file.mimetype};base64,${file.buffer.toString('base64')}`,
+                 {
+                   folder: 'csirs-incidents',
+                   resource_type: 'auto',
+                 }
+               );
+
+               return {
+                 fileName: file.originalname,
+                 filePath: result.secure_url,           // ← Cloudinary URL
+                 mimeType: file.mimetype,
+                 size: file.size,
+                 publicId: result.public_id,            // ← For future deletion
+               };
+             })
+           );
 
            const incident = await IncidentService.createIncident(
              req.body,
-             isAnonymous ? undefined : reporterId,   // ← Respect anonymous toggle
+             isAnonymous ? undefined : reporterId,
              attachments
            );
 

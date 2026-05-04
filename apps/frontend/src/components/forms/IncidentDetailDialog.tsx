@@ -174,7 +174,7 @@ const attachments = fullIncident?.attachments || [];
     <div className="idd-attachments-grid">
       {attachments.map((att: any) => {
         const isImage = att.mimeType?.startsWith('image/');
-        const fileUrl = `${import.meta.env.VITE_API_URL?.replace('/api', '')}/${att.filePath}`;
+        const fileUrl = att.filePath; // This should already be the Cloudinary secure_url
         return (
           <a
             key={att.id}

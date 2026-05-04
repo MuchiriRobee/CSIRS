@@ -38,10 +38,11 @@ class IncidentRepository extends BaseRepository<any> {
         data: data.attachments.map((att) => ({
           incidentId: incident.id,
           fileName: att.fileName,
-          filePath: att.filePath,
+          filePath: att.filePath,           // Now Cloudinary secure_url
           mimeType: att.mimeType,
           size: att.size,
           uploadedById: data.reporterId || null,
+          publicId: (att as any).publicId || null,   // ← Add this line
         })),
       });
     }
