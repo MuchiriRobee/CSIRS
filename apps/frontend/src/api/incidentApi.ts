@@ -47,6 +47,20 @@ export const incidentApi = createApi({
       invalidatesTags: ["Incidents"],
     }),
 
+    // NEW: Reporter updates their own incident
+    updateOwnIncident: builder.mutation({
+      query: ({ id, ...body }) => ({
+        url: `/my-reports/${id}`,
+        method: "PATCH",
+        body,
+      }),
+      invalidatesTags: ({ id }) => [
+        "MyReports",
+        "Incidents",
+        { type: "IncidentComments", id },
+      ],
+    }),
+
         // NEW: Get full incident with attachments and comments
     getIncidentDetails: builder.query({
       query: (incidentId: string) => `/incidents/${incidentId}`,
@@ -84,4 +98,5 @@ export const {
   useGetIncidentCommentsQuery,
   useAddCommentMutation,
   useGetIncidentDetailsQuery,
+  useUpdateOwnIncidentMutation,  
 } = incidentApi;
