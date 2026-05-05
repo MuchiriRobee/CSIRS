@@ -17,7 +17,7 @@ import {
 import {
   Search, Trash2, Plus, ChevronUp, ChevronDown,
   ChevronsUpDown, ArrowLeft, ArrowRight, Filter,
-  FileText, ShieldAlert, X, MessageSquare,
+  FileText, ShieldAlert, X, MessageSquare, Eye,
 } from 'lucide-react';
 import { useGetMyReportsQuery } from '../../api/incidentApi';
 import ReportIncidentDialog from '../forms/ReportIncidentDialog';
@@ -150,11 +150,12 @@ export default function MyReportsTable() {
           <div className="flex items-center gap-2">
             <button
               onClick={() => setSelectedIncident(incident)}
-              className="mr-view-btn p-1.5 hover:bg-slate-100 rounded-md transition-colors"
+              className="mr-view-btn p-1.5 hover:bg-green-100 hover:text-green-600 rounded-md transition-colors"
               title="View details & comments"
             >
-              <MessageSquare className="w-3.5 h-3.5 text-slate-500" />
+              <Eye className="w-3.5 h-3.5 text-slate-500" />
             </button>
+            {/* Delete action only for pending reports 
         <AlertDialog>
           <AlertDialogTrigger asChild>
             <button className="mr-delete-btn" title="Delete report" aria-label="Delete report">
@@ -182,6 +183,7 @@ export default function MyReportsTable() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+        */}
         </div>
         );
       },
