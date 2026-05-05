@@ -23,6 +23,34 @@ class AuditLogRepository extends BaseRepository<any> {
       },
     });
   }
+
+  async findAllLogs(page = 1, limit = 10) {
+  const skip = (page - 1) * limit;
+
+  const [logs, total] = await Promise.all([
+    this.model.findMany({
+      skip,
+      take: limit,
+      orderBy: { createdAt: 'desc' },
+    }),
+    this.model.count(),
+  ]);
+
+  return {
+    data: logs,
+    meta: {
+      total,
+      page,
+      lastPage: Math.ceil(total / limit),
+    },
+  };
+}
+
+async findLogById(id: string) {
+  return this.model.findUnique({
+    where: { id },
+  });
+}
 }
 
 export const auditLogRepository = new AuditLogRepository();

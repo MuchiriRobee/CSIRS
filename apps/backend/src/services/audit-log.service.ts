@@ -15,4 +15,12 @@ export class AuditLogService {
       // Never throw — audit logging must not break the main flow
     }
   }
+
+  static async getAllLogs(page = 1, limit = 10) {
+  return auditLogRepository.findAllLogs(page, limit);
+}
+
+static async getLogById(id: string) {
+  return auditLogRepository.findLogById(id);
+}
 }
