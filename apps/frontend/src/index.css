@@ -6515,3 +6515,209 @@ main.flex-1 {
   font-weight: 400;
   margin: 0;
 }
+
+/* ── Edit overlay ───────────────────────────────────────── */
+.idd-edit-overlay {
+  position: absolute;
+  inset: 0;
+  background: white;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.idd-edit-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #f1f5f9;
+  flex-shrink: 0;
+}
+
+.idd-edit-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.idd-edit-title {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-weight: 700;
+  font-size: 0.9375rem;
+  color: #0f172a;
+}
+
+.idd-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  padding: 1.5rem;
+  flex: 1;
+}
+
+.idd-edit-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.idd-edit-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #94a3b8;
+}
+
+.idd-edit-input {
+  height: 44px;
+  padding: 0 12px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 0.875rem;
+  color: #0f172a;
+  background: #f8f9fb;
+  border: 1.5px solid #e8edf3;
+  border-radius: 10px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.idd-edit-input:focus {
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 3px rgba(245,158,11,0.1);
+  background: white;
+}
+
+.idd-edit-textarea {
+  padding: 10px 12px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 0.875rem;
+  color: #0f172a;
+  background: #f8f9fb;
+  border: 1.5px solid #e8edf3;
+  border-radius: 10px;
+  outline: none;
+  resize: vertical;
+  line-height: 1.6;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.idd-edit-textarea:focus {
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 3px rgba(245,158,11,0.1);
+  background: white;
+}
+
+.idd-edit-select-trigger {
+  height: 44px !important;
+  font-family: 'IBM Plex Sans', sans-serif !important;
+  font-size: 0.875rem !important;
+  background: #f8f9fb !important;
+  border: 1.5px solid #e8edf3 !important;
+  border-radius: 10px !important;
+}
+
+.idd-edit-select-trigger:focus, 
+.idd-edit-select-trigger[data-state="open"] {
+  border-color: #f59e0b !important;
+  box-shadow: 0 0 0 3px rgba(245,158,11,0.1) !important;
+  background: white !important;
+}
+
+.idd-edit-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: flex-end;
+  padding-top: 0.5rem;
+  border-top: 1px solid #f1f5f9;
+  margin-top: auto;
+}
+
+.idd-edit-cancel-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 40px;
+  padding: 0 18px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #475569;
+  background: white;
+  border: 1.5px solid #e8edf3;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.idd-edit-cancel-btn:hover {
+  border-color: #cbd5e1;
+  background: #f8fafc;
+}
+
+.idd-edit-save-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 40px;
+  padding: 0 20px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: white;
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  box-shadow: 0 3px 10px rgba(15,23,42,0.22);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.idd-edit-save-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 5px 16px rgba(15,23,42,0.28);
+}
+
+.idd-edit-save-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Edit trigger row ───────────────────────────────────── */
+.idd-edit-trigger-row {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0.75rem 1.5rem;
+  border-top: 1px solid #f1f5f9;
+  background: white;
+}
+
+.idd-edit-trigger-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 38px;
+  padding: 0 16px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #475569;
+  background: white;
+  border: 1.5px solid #e8edf3;
+  border-radius: 9px;
+  cursor: pointer;
+  transition: all 0.18s;
+}
+
+.idd-edit-trigger-btn:hover {
+  border-color: #f59e0b;
+  color: #b45309;
+  background: #fffbeb;
+}
