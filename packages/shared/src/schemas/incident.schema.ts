@@ -24,7 +24,16 @@ export const incidentQuerySchema = z.object({
   location: z.string().optional(),
 });
 
+export const updateReporterIncidentSchema = z.object({
+  category: z.nativeEnum(IncidentCategory).optional(),
+  location: z.string().min(3, "Location must be at least 3 characters").optional(),
+  description: z.string().min(10, "Description must be at least 10 characters").optional(),
+}).refine((data) => Object.keys(data).length > 0, {
+  message: "At least one field must be provided for update",
+});
+
 // Export inferred types for frontend/backend usage
 export type ReportIncidentInput = z.infer<typeof reportIncidentSchema>;
 export type UpdateIncidentInput = z.infer<typeof updateIncidentSchema>;
 export type IncidentQueryInput = z.infer<typeof incidentQuerySchema>;
+export type UpdateReporterIncidentInput = z.infer<typeof updateReporterIncidentSchema>;
