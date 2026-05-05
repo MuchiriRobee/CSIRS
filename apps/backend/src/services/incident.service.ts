@@ -1,7 +1,7 @@
 // src/services/incident.service.ts
 import { incidentRepository } from '../repositories/incident.repository.js';
 import { NotificationService } from './notification.service.js';
-import { reportIncidentSchema, updateIncidentSchema, incidentQuerySchema } from '@csirs/shared/schemas';
+import { reportIncidentSchema, updateIncidentSchema, incidentQuerySchema, updateReporterIncidentSchema } from '@csirs/shared/schemas';
 import { AuditLogService } from './audit-log.service.js';
 //import { IncidentCategory, IncidentStatus } from '@csirs/shared/types';
 
@@ -84,6 +84,40 @@ static async getMyReports(reporterId: string, query: any) {
        }
 
     return incident;
+  }
+
+    /**
+   * Update own incident (Reporter only - ownership enforced)
+   */
+  static async updateReporterIncident(
+    incidentId: string,
+    data: any,
+    reporterId: string
+  ) {
+    const validated = updateReporterIncidentSchema.parse(data);
+
+    // Security: Verify reporter owns this incident
+    const existingIncident = await incidentRepository.findWithFilters({
+      id: incidentId,
+      reporterId,
+    });
+
+    if (!existingIncident.data || existingIncident.data.length === 0) {
+      throw new Error('Incident not found or you do not have permission to edit it');
+    }
+
+    const updated = await incidentRepository.updateReporterIncident(incidentId, validated);
+
+    // Audit log
+    await AuditLogService.log(
+      'UPDATE_INCIDENT_REPORTER',
+      'INCIDENT',
+      incidentId,
+      reporterId,
+      { changes: validated }
+    );
+
+    return updated;
   }
 
   /**

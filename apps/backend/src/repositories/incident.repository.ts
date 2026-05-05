@@ -115,7 +115,6 @@ class IncidentRepository extends BaseRepository<any> {
         reporter: true, // ← This was missing
       },
     });
-
     // Audit log
     await auditLogRepository.logAction(
       "UPDATE_STATUS",
@@ -126,6 +125,30 @@ class IncidentRepository extends BaseRepository<any> {
     );
 
     return incident;
+  }
+
+    /**
+   * Update incident details by the reporter (basic fields only)
+   */
+  async updateReporterIncident(
+    id: string,
+    data: {
+      category?: IncidentCategory;
+      location?: string;
+      description?: string;
+    }
+  ) {
+    return this.model.update({
+      where: { id },
+      data: {
+        ...data,
+        updatedAt: new Date(),
+      },
+      include: {
+        reporter: { select: { name: true, email: true, phone: true } },
+        attachments: true,
+      },
+    });
   }
 
   // ← Added missing method

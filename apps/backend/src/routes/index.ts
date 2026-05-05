@@ -3,6 +3,7 @@ import { HealthController } from "../controllers/health.controller.js";
 import { AuthController } from "../controllers/auth.controller.js";
 import { IncidentController } from "../controllers/incident.controller.js";
 import { UserController } from "../controllers/user.controller.js";
+import { AuditLogController } from "../controllers/audit-log.controller.js";
 import {
   authenticateJWT,
   requireAdmin,
@@ -53,6 +54,14 @@ router.get(
   IncidentController.getMyReports,
 );
 
+// Reporter: Update their own incident
+router.patch(
+  "/my-reports/:id",
+  authenticateJWT,
+  requireReporterOrAdmin,
+  IncidentController.updateOwnIncident,
+);
+
 // Admin: Update incident status / notes
 router.put(
   "/incidents/:id",
@@ -85,6 +94,9 @@ router.patch(
   requireAdmin,
   UserController.updateUserRole,
 );
+// Fetchning audit logs
+router.get("/audit-logs", authenticateJWT, requireAdmin, AuditLogController.getAllLogs);
+router.get("/audit-logs/:id", authenticateJWT, requireAdmin, AuditLogController.getLogById);
 
 // Profile & Password management (authenticated users)
 router.patch("/auth/profile", authenticateJWT, UserController.updateProfile);

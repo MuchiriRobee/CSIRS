@@ -135,6 +135,38 @@ export class IncidentController {
        }
      }
 
+       /**
+   * Reporter updates their own incident
+   */
+  static async updateOwnIncident(req: Request, res: Response) {
+    try {
+      const id = String(req.params.id);
+      if (!id) {
+        return res.status(400).json({ success: false, message: 'Incident ID is required' } as ApiError);
+      }
+
+      if (!req.user) {
+        return res.status(401).json({ success: false, message: 'Authentication required' } as ApiError);
+      }
+
+      const incident = await IncidentService.updateReporterIncident(
+        id,
+        req.body,
+        req.user.userId
+      );
+
+      const response: ApiSuccess = {
+        success: true,
+        message: 'Incident updated successfully',
+        data: incident,
+      };
+      res.status(200).json(response);
+    } catch (error: any) {
+      const response: ApiError = { success: false, message: error.message };
+      res.status(400).json(response);
+    }
+  }
+
      /**
       * Add comment to an incident
       */
