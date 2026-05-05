@@ -5,13 +5,15 @@ import {
 } from '../ui/dialog';
 import {
   Send, MessageSquare, MapPin, ShieldAlert,
-  User, Calendar, Tag, FileText, Clock, FileImage,
+  User, Calendar, Tag, FileText, Clock, FileImage,  Pencil, X, Check,
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { useAddCommentMutation, useGetIncidentDetailsQuery } from '../../api/incidentApi';
+import { useAddCommentMutation, useGetIncidentDetailsQuery, useUpdateOwnIncidentMutation } from '../../api/incidentApi';
 import { useAuth } from '../../providers/AuthProvider';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+
 
 /* ── Types ──────────────────────────────────────────────── */
 type Incident = {
@@ -61,6 +63,10 @@ function DetailItem({ icon: Icon, label, children }: {
 ═══════════════════════════════════════════════════════════ */
 export default function IncidentDetailDialog({ incident, open, onOpenChange, onSuccess }: Props) {
   const [newComment, setNewComment] = useState('');
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState({ category: '', location: '', description: '' });
+
+  const [updateOwnIncident, { isLoading: isSaving }] = useUpdateOwnIncidentMutation();
   const { user } = useAuth();
 
   const [addComment, { isLoading: isAdding }] = useAddCommentMutation();
@@ -85,6 +91,28 @@ const attachments = fullIncident?.attachments || [];
       toast.error('Failed to add comment');
     }
   };
+
+  const handleEditOpen = () => {
+    if (!incident) return;
+  setEditForm({
+    category: incident.category,
+    location: incident.location,
+    description: incident.description,
+  });
+  setIsEditing(true);
+};
+
+const handleEditSave = async () => {
+  if (!incident) return;
+  try {
+    await updateOwnIncident({ id: incident.id, ...editForm }).unwrap();
+    toast.success('Incident updated successfully');
+    setIsEditing(false);
+    onSuccess?.();
+  } catch {
+    toast.error('Failed to update incident');
+  }
+};
 
   if (!incident) return null;
 
@@ -165,6 +193,112 @@ const attachments = fullIncident?.attachments || [];
             <DetailItem icon={FileText} label="Description">
               <p className="idd-description">{incident.description}</p>
             </DetailItem>
+            {/* ── Edit form overlay (renders inside body, replaces details section visually) ── */}
+<AnimatePresence>
+  {isEditing && (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 10 }}
+      transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+      className="idd-edit-overlay"
+    >
+      <div className="idd-edit-header">
+        <div className="idd-edit-header-left">
+          <Pencil className="w-4 h-4 text-amber-500" />
+          <span className="idd-edit-title">Edit Incident Details</span>
+        </div>
+        <button onClick={() => setIsEditing(false)} className="idd-close-btn" aria-label="Cancel edit">
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+
+      <div className="idd-edit-form">
+        {/* Category */}
+        <div className="idd-edit-field">
+          <label className="idd-edit-label">
+            <Tag className="w-3.5 h-3.5" /> Category
+          </label>
+          <Select value={editForm.category} onValueChange={(v) => setEditForm(f => ({ ...f, category: v }))}>
+            <SelectTrigger className="idd-edit-select-trigger">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {[
+                ['THEFT',               'Theft'],
+                ['PHYSICAL_ASSAULT',    'Physical Assault'],
+                ['SEXUAL_HARASSMENT',   'Sexual Harassment'],
+                ['FIRE_OUTBREAK',       'Fire Outbreak'],
+                ['MEDICAL_EMERGENCY',   'Medical Emergency'],
+                ['PROPERTY_DAMAGE',     'Property Damage'],
+                ['CYBER_BULLYING',      'Cyberbullying'],
+                ['INFRASTRUCTURE_ISSUE','Infrastructure Issue'],
+                ['OTHER',               'Other'],
+              ].map(([value, label]) => (
+                <SelectItem key={value} value={value}>{label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Location */}
+        <div className="idd-edit-field">
+          <label className="idd-edit-label">
+            <MapPin className="w-3.5 h-3.5" /> Location
+          </label>
+          <input
+            type="text"
+            value={editForm.location}
+            onChange={e => setEditForm(f => ({ ...f, location: e.target.value }))}
+            className="idd-edit-input"
+            placeholder="e.g. Hostel Block B, Lab A"
+          />
+        </div>
+
+        {/* Description */}
+        <div className="idd-edit-field">
+          <label className="idd-edit-label">
+            <FileText className="w-3.5 h-3.5" /> Description
+          </label>
+          <textarea
+            value={editForm.description}
+            onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))}
+            className="idd-edit-textarea"
+            rows={4}
+            placeholder="Describe what happened..."
+          />
+        </div>
+
+        {/* Actions */}
+        <div className="idd-edit-actions">
+          <button onClick={() => setIsEditing(false)} className="idd-edit-cancel-btn">
+            <X className="w-3.5 h-3.5" /> Cancel
+          </button>
+          <button
+            onClick={handleEditSave}
+            disabled={isSaving || !editForm.location.trim() || !editForm.description.trim()}
+            className="idd-edit-save-btn"
+          >
+            {isSaving
+              ? <><span className="idd-send-spinner" /> Saving…</>
+              : <><Check className="w-3.5 h-3.5" /> Save Changes</>
+            }
+          </button>
+        </div>
+      </div>
+    </motion.div>
+  )}
+</AnimatePresence>
+
+{/* ── Edit button — only show for reporter's own non-closed incidents ── */}
+{!isEditing && user && user.role === 'REPORTER' && incident.reporterId && incident.status !== 'CLOSED' && incident.status !== 'RESOLVED' && (
+  <div className="idd-edit-trigger-row">
+    <button onClick={handleEditOpen} className="idd-edit-trigger-btn">
+      <Pencil className="w-3.5 h-3.5" />
+      Edit Report Details
+    </button>
+  </div>
+)}
           </div>
 
 {/* Attachments Section */}
